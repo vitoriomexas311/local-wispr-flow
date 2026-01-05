@@ -12,3 +12,4 @@ jobs:
         with:
           persist-credentials: false
       - run: swift build
+      - run: swift test --disable-xctest --enable-code-coverage

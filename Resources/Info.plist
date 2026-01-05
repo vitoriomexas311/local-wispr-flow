@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key><string>LocalFlow</string>
+    <key>CFBundleIdentifier</key><string>io.github.vitoriomexas311.localflow</string>
+    <key>CFBundleName</key><string>LocalFlow</string>
+    <key>CFBundleDisplayName</key><string>LocalFlow</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSUIElement</key><true/>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSMicrophoneUsageDescription</key><string>Record only while you hold the dictation hotkey. Audio is transcribed on this Mac and is not saved by LocalFlow.</string>
+    <key>NSSpeechRecognitionUsageDescription</key><string>Use Apple's on-device speech recognition. LocalFlow refuses to record unless on-device recognition is available and never requests server recognition.</string>
+</dict></plist>
