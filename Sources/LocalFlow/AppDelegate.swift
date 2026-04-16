@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import Speech
+import DictationCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -8,6 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var setupWindow: NSWindow?
     private var readinessLabel: NSTextField?
     private var refreshTimer: Timer?
+    private let controller = DictationController()
+    private let indicator = RecordingIndicator()
+    private var hotkeyPicker: NSPopUpButton?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -20,7 +24,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit LocalFlow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
-        showSetup()
+        let mainMenu = NSMenu()
+        let appMenu = NSMenuItem()
+        appMenu.submenu = menu.copy() as? NSMenu
+        mainMenu.addItem(appMenu)
+        NSApp.mainMenu = mainMenu
+        controller.onStatus = { [weak self] message, active in
+            self?.statusItem.button?.title = active ? "● LF" : "LF"
+            self?.statusItem.button?.toolTip = message
+            self?.indicator.show(message, active: active)
+        }
+        controller.start()
+        if Permissions.snapshot().blockingIssue != nil || !UserDefaults.standard.bool(forKey: "hasOpened") {
+            showSetup()
+            UserDefaults.standard.set(true, forKey: "hasOpened")
+        }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshReadiness() }
         }
@@ -28,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showSetup() {
         if setupWindow == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 450),
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 540),
                                   styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             window.title = "LocalFlow Setup"
             window.isReleasedWhenClosed = false
@@ -58,9 +76,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 stack.addArrangedSubview(NSButton(title: title, target: self, action: action))
             }
             let note = NSTextField(wrappingLabelWithString:
-                "Recording is not enabled in this development checkpoint. No audio is captured by setup.")
+                "Focus a text field, hold the shortcut, speak, then release all shortcut keys. " +
+                "Escape cancels. Up to 10 minutes per hold. Microphone: system default. " +
+                "Inserted text follows the destination app's privacy policy.")
             note.textColor = .secondaryLabelColor
             stack.addArrangedSubview(note)
+            let picker = NSPopUpButton()
+            picker.addItems(withTitles: ["Control–Option–Space", "Control–Shift–Space", "Option–Shift–Space"])
+            picker.selectItem(at: HotkeyChoice.allCases.firstIndex(of: controller.hotkey) ?? 0)
+            picker.target = self
+            picker.action = #selector(changeHotkey)
+            picker.setAccessibilityLabel("Hold-to-dictate shortcut")
+            stack.addArrangedSubview(picker)
+            hotkeyPicker = picker
             window.contentView?.addSubview(stack)
             NSLayoutConstraint.activate([
                 stack.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 28),
@@ -82,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "Microphone: \(readiness.microphoneAuthorized ? "allowed" : "permission needed") · " +
             "Accessibility: \(readiness.accessibilityTrusted ? "allowed" : "permission needed")\n" +
             "Input monitoring: \(readiness.inputMonitoringGranted ? "allowed" : "permission needed")"
+        hotkeyPicker?.isEnabled = controller.machine.phase == .idle
     }
 
     @objc private func prepareSpeech() {
@@ -103,5 +132,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func allowInputMonitoring() {
         _ = CGRequestListenEventAccess()
+    }
+
+    @objc private func changeHotkey() {
+        guard let index = hotkeyPicker?.indexOfSelectedItem, HotkeyChoice.allCases.indices.contains(index) else { return }
+        controller.hotkey = HotkeyChoice.allCases[index]
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        controller.stop()
+        refreshTimer?.invalidate()
     }
 }

@@ -18,6 +18,7 @@ final class HotkeyMonitor {
     var onAction: ((HotkeyAction) -> Void)?
     var sessionActive = false
     var policy = HotkeyPolicy()
+    private(set) var activityRevision: UInt64 = 0
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     var isInstalled: Bool { tap != nil }
@@ -60,6 +61,7 @@ final class HotkeyMonitor {
                                       modifiers: LocalEvent.modifiers(event.flags),
                                       repeated: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
                                       ownEvent: own, sessionActive: sessionActive)
+        if !own && (kind == .pointer || (kind == .keyDown && !decision.consume)) { activityRevision &+= 1 }
         // Do not retain the CGEvent or inspect its Unicode payload.
         if decision.action != .none { onAction?(decision.action) }
         if kind == .interrupted, let tap { CGEvent.tapEnable(tap: tap, enable: true) }
