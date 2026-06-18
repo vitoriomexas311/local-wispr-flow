@@ -1,0 +1,22 @@
+LocalFlow — unsigned pilot, macOS 14+, US English
+
+1. Extract this ZIP. Run: bash ./install.sh
+2. Open ~/Applications/LocalFlow.app in Finder. Approve through macOS.
+3. Complete the four permission buttons in LocalFlow Setup.
+4. If local speech assets are missing, provision English (US) through macOS
+   Keyboard > Dictation setup, then verify LocalFlow while disconnected.
+5. Focus a text field. Hold Control–Option–Space, speak, release all keys.
+
+Escape cancels. Never submits. No clipboard use. Ten minutes maximum.
+The destination app can store or transmit the inserted text.
+
+The installer is offline and requires no compiler, package manager, or sudo.
+It does not strip quarantine or disable Gatekeeper. Unsigned updates can
+require fresh macOS permission grants. Quit LocalFlow before an update.
+
+Rollback: bash ./install.sh --rollback
+Uninstall: bash ./uninstall.sh
+Previous apps remain in ~/Applications/LocalFlow Backups.
+
+Source, privacy boundary, and validation: github.com/vitoriomexas311/local-wispr-flow
+No company-wide CUI compliance certification is implied.
