@@ -27,3 +27,17 @@ jobs:
       - run: swift test --disable-xctest --enable-code-coverage
       - name: Enforce complete core line coverage
         run: python3 scripts/check-coverage.py "$(swift build --show-bin-path)/codecov/LocalFlow.json"
+      - name: Build native offline package and test installer
+        run: |
+          scripts/build-app.sh
+          scripts/package.sh
+          bash Tests/Installer/test-install.sh
+      - name: Validate both architecture builds
+        if: matrix.os == 'macos-15'
+        run: |
+          for architecture in arm64 x86_64; do
+            ARCHITECTURE="$architecture" scripts/build-app.sh
+            lipo -verify_arch "$architecture" ".build/app-$architecture/LocalFlow.app/Contents/MacOS/LocalFlow"
+            ARCHITECTURE="$architecture" scripts/package.sh
+          done
+      # App archives remain local to the job until actual hardware acceptance.
