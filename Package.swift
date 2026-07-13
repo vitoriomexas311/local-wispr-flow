@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .target(name: "DictationCore"),
         .executableTarget(name: "LocalFlow", dependencies: ["DictationCore"]),
-        .executableTarget(name: "LocalFlowHarness", dependencies: ["DictationCore"], path: "Tests/MacHarness"),
+        .executableTarget(name: "LocalFlowHarness", dependencies: ["DictationCore"], path: "Tests/MacHarness", exclude: ["README.md"]),
         .testTarget(name: "DictationCoreTests", dependencies: ["DictationCore"])
     ],
     swiftLanguageModes: [.v5]

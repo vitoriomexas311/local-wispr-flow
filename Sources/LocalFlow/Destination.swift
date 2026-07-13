@@ -3,17 +3,15 @@ import Carbon
 import DictationCore
 
 struct Destination {
-    enum Method { case accessibility, keyboard }
     let pid: pid_t
     let window: AXUIElement
     let element: AXUIElement
-    let selection: CFRange?
-    let method: Method
+    let selection: TextSelection?
+    let method: InsertionMethod
 }
 
 @MainActor
 enum DestinationAccess {
-    private static let keyboardApplications: Set<String> = ["com.apple.Terminal", "com.apple.TextEdit", "com.apple.Safari", "com.google.Chrome"]
 
     private static func attribute(_ element: AXUIElement, _ key: String) -> CFTypeRef? {
         var result: CFTypeRef?
@@ -26,16 +24,15 @@ enum DestinationAccess {
         return (value as! AXUIElement)
     }
 
-    private static func selection(_ element: AXUIElement) -> CFRange? {
+    private static func selection(_ element: AXUIElement) -> TextSelection? {
         guard let value = attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
         var range = CFRange()
         guard AXValueGetValue(value as! AXValue, .cfRange, &range) else { return nil }
-        return range
+        return TextSelection(location: range.location, length: range.length)
     }
 
     static func capture() -> Destination? {
-        guard !IsSecureEventInputEnabled(), AXIsProcessTrusted(),
-              let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != getpid() else { return nil }
+        guard let front = NSWorkspace.shared.frontmostApplication else { return nil }
         let app = AXUIElementCreateApplication(front.processIdentifier)
         AXUIElementSetMessagingTimeout(app, 0.2)
         guard let window = uiElement(attribute(app, kAXFocusedWindowAttribute)),
@@ -43,31 +40,27 @@ enum DestinationAccess {
         AXUIElementSetMessagingTimeout(element, 0.2)
         let role = attribute(element, kAXRoleAttribute) as? String
         let subrole = attribute(element, kAXSubroleAttribute) as? String
-        guard subrole != kAXSecureTextFieldSubrole, role == kAXTextFieldRole || role == kAXTextAreaRole || role == kAXComboBoxRole else { return nil }
-        if let enabled = attribute(element, kAXEnabledAttribute) as? Bool, !enabled { return nil }
         var settable = DarwinBoolean(false)
         AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable)
-        let method: Destination.Method
-        if settable.boolValue && front.bundleIdentifier != "com.apple.Terminal" {
-            method = .accessibility
-        } else if keyboardApplications.contains(front.bundleIdentifier ?? "") {
-            method = .keyboard
-        } else { return nil }
+        guard let method = DestinationPolicy.method(bundleID: front.bundleIdentifier ?? "", role: role ?? "",
+            subrole: subrole, enabled: attribute(element, kAXEnabledAttribute) as? Bool,
+            selectionSettable: settable.boolValue, secureInput: IsSecureEventInputEnabled(),
+            trusted: AXIsProcessTrusted(), ownApplication: front.processIdentifier == getpid()) else { return nil }
         return Destination(pid: front.processIdentifier, window: window, element: element,
                            selection: selection(element), method: method)
     }
 
     static func isCurrent(_ destination: Destination, checkSelection: Bool = true) -> Bool {
-        guard !IsSecureEventInputEnabled(), NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.pid else { return false }
         let app = AXUIElementCreateApplication(destination.pid)
         AXUIElementSetMessagingTimeout(app, 0.2)
-        guard let window = uiElement(attribute(app, kAXFocusedWindowAttribute)), CFEqual(window, destination.window),
-              let element = uiElement(attribute(app, kAXFocusedUIElementAttribute)), CFEqual(element, destination.element),
-              attribute(element, kAXSubroleAttribute) as? String != kAXSecureTextFieldSubrole else { return false }
-        if checkSelection, let original = destination.selection, let current = selection(element) {
-            return original.location == current.location && original.length == current.length
-        }
-        return true
+        guard let window = uiElement(attribute(app, kAXFocusedWindowAttribute)),
+              let element = uiElement(attribute(app, kAXFocusedUIElementAttribute)) else { return false }
+        return DestinationPolicy.remainsValid(
+            applicationMatches: NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.pid,
+            windowMatches: CFEqual(window, destination.window), elementMatches: CFEqual(element, destination.element),
+            secureInput: IsSecureEventInputEnabled(),
+            secureField: attribute(element, kAXSubroleAttribute) as? String == kAXSecureTextFieldSubrole,
+            original: destination.selection, current: selection(element), checkSelection: checkSelection)
     }
 
     static func insert(_ text: String, into destination: Destination, stillValid: @MainActor () -> Bool) async -> Bool {
