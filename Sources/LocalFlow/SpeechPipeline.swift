@@ -8,6 +8,8 @@ import DictationCore
 final class SpeechPipeline {
     var onResult: ((UInt64, String) -> Void)?
     var onFailure: ((UInt64, FailureCode) -> Void)?
+    var onWindowMetrics: ((Double, Double, Int, Int, Double) -> Void)?
+    var onPartialMetrics: ((Double, Int, Bool, Double, Double) -> Void)?
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -43,7 +45,7 @@ final class SpeechPipeline {
         self.recognizer = recognizer
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
-        request.shouldReportPartialResults = false
+        request.shouldReportPartialResults = true
         request.addsPunctuation = true
         request.taskHint = .dictation
         self.request = request
@@ -57,6 +59,12 @@ final class SpeechPipeline {
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             DispatchQueue.main.async {
                 guard let self, self.live, self.window == expectedWindow else { return }
+                if let result, !result.isFinal {
+                    let segments = result.bestTranscription.segments
+                    self.onPartialMetrics?(self.origin, segments.count, result.speechRecognitionMetadata != nil,
+                        segments.first?.timestamp ?? 0,
+                        segments.last.map { $0.timestamp + $0.duration } ?? 0)
+                }
                 if let result, result.isFinal {
                     self.completeWindow(result.bestTranscription)
                 } else if error != nil {
@@ -123,6 +131,8 @@ final class SpeechPipeline {
         }
         do { try timeline.append(words, windowStart: origin, replayDuration: replayDuration) }
         catch { fail(.recognitionFailed); return }
+        onWindowMetrics?(origin, windowEnd, words.count, timeline.words.count,
+                         words.last.map { $0.start + $0.duration } ?? origin)
         request = nil
         task = nil
         recognizer = nil

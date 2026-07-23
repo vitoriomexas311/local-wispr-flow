@@ -20,6 +20,14 @@ enum SpeechProbe {
             return 1
         }
         let pipeline = SpeechPipeline()
+        pipeline.onWindowMetrics = { start, end, segments, accumulated, lastWordEnd in
+            report(["kind": "recognition-window", "audioStart": start, "audioEnd": end,
+                    "segments": segments, "accumulatedSegments": accumulated, "lastWordEnd": lastWordEnd])
+        }
+        pipeline.onPartialMetrics = { start, count, metadata, first, last in
+            report(["kind": "partial-metrics", "windowStart": start, "segments": count,
+                    "hasSpeechMetadata": metadata, "firstTimestamp": first, "lastTimestamp": last])
+        }
         var finished = false
         var passed = false
         pipeline.onResult = { _, text in
