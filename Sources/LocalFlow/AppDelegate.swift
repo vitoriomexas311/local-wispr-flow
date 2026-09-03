@@ -17,6 +17,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "LF"
+        if let iconURL = Bundle.main.url(forResource: "LocalFlow", withExtension: "icns"),
+           let icon = NSImage(contentsOf: iconURL) {
+            icon.size = NSSize(width: 20, height: 20)
+            icon.isTemplate = false
+            statusItem.button?.image = icon
+        }
         statusItem.button?.toolTip = "LocalFlow — local dictation"
         let menu = NSMenu()
         let setup = NSMenuItem(title: "LocalFlow Setup…", action: #selector(showSetup), keyEquivalent: "")

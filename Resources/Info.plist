@@ -3,6 +3,7 @@
 <plist version="1.0"><dict>
     <key>CFBundleExecutable</key><string>LocalFlow</string>
     <key>CFBundleIdentifier</key><string>io.github.vitoriomexas311.localflow</string>
+    <key>CFBundleIconFile</key><string>LocalFlow</string>
     <key>CFBundleName</key><string>LocalFlow</string>
     <key>CFBundleDisplayName</key><string>LocalFlow</string>
     <key>CFBundlePackageType</key><string>APPL</string>
