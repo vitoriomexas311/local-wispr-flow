@@ -55,4 +55,16 @@ struct UtteranceAccumulatorTests {
         }
         #expect(bounded.words.count == 1)
     }
+
+    @Test func adjacentUtterancesSurviveFloatingPointRounding() throws {
+        var value = UtteranceAccumulator()
+        // The adapter adds a window origin before durations. Adjacent boundaries
+        // can differ by an ULP because (origin + start) + duration != origin + end.
+        try value.update([word("first", 0.1, 0.2)])
+        try value.update([word("second", 0.3, 0.2)])
+        #expect(value.words.map(\.text) == ["first", "second"])
+        #expect(throws: TimelineError.invalidTiming) {
+            try value.update([word("real overlap", 0.49, 0.3)])
+        }
+    }
 }
