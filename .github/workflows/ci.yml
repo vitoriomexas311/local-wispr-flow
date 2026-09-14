@@ -40,7 +40,7 @@ jobs:
         run: |
           for architecture in arm64 x86_64; do
             ARCHITECTURE="$architecture" scripts/build-app.sh
-            lipo -verify_arch "$architecture" ".build/app-$architecture/LocalFlow.app/Contents/MacOS/LocalFlow"
+            lipo ".build/app-$architecture/LocalFlow.app/Contents/MacOS/LocalFlow" -verify_arch "$architecture"
             ARCHITECTURE="$architecture" scripts/package.sh
           done
       # App archives remain local to the job until actual hardware acceptance.
