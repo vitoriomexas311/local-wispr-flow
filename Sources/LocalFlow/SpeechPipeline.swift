@@ -2,6 +2,10 @@ import AVFoundation
 import Speech
 import DictationCore
 
+enum SpeechDiagnosticFailure: String {
+    case invalidSegmentRange, utteranceReconciliation, windowReconciliation, appleRecognition
+}
+
 /// Serial recognition requests, with a short replay buffer and bounded rotation backlog.
 /// No speech request can be constructed without a fresh on-device capability check.
 @MainActor
@@ -10,6 +14,7 @@ final class SpeechPipeline {
     var onFailure: ((UInt64, FailureCode) -> Void)?
     var onWindowMetrics: ((Double, Double, Int, Int, Double) -> Void)?
     var onPartialMetrics: ((Double, Int, Bool, Double, Double) -> Void)?
+    var onDiagnosticFailure: ((SpeechDiagnosticFailure) -> Void)?
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -72,16 +77,22 @@ final class SpeechPipeline {
                     // the hypothesis without isFinal. Only completed results have
                     // trustworthy timing; transient partials can contain 0.01s placeholders.
                     guard let words = self.timedWords(result.bestTranscription) else {
+                        self.onDiagnosticFailure?(.invalidSegmentRange)
                         self.fail(.recognitionFailed)
                         return
                     }
                     do { try self.utterances.update(words) }
-                    catch { self.fail(.recognitionFailed); return }
+                    catch {
+                        self.onDiagnosticFailure?(.utteranceReconciliation)
+                        self.fail(.recognitionFailed)
+                        return
+                    }
                 }
                 if let result, result.isFinal {
                     self.completeWindow()
                 } else if error != nil {
                     // Never put NSError descriptions or recognition content into diagnostics.
+                    self.onDiagnosticFailure?(.appleRecognition)
                     self.fail(.recognitionFailed)
                 }
             }
@@ -148,7 +159,11 @@ final class SpeechPipeline {
     private func completeWindow() {
         let words = utterances.words
         do { try timeline.append(words, windowStart: origin, replayDuration: replayDuration) }
-        catch { fail(.recognitionFailed); return }
+        catch {
+            onDiagnosticFailure?(.windowReconciliation)
+            fail(.recognitionFailed)
+            return
+        }
         onWindowMetrics?(origin, windowEnd, words.count, timeline.words.count,
                          words.last.map { $0.start + $0.duration } ?? origin)
         request = nil

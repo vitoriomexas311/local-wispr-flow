@@ -20,6 +20,9 @@ enum SpeechProbe {
             return 1
         }
         let pipeline = SpeechPipeline()
+        pipeline.onDiagnosticFailure = { stage in
+            report(["kind": "recognition-failure-stage", "stage": stage.rawValue])
+        }
         pipeline.onWindowMetrics = { start, end, segments, accumulated, lastWordEnd in
             report(["kind": "recognition-window", "audioStart": start, "audioEnd": end,
                     "segments": segments, "accumulatedSegments": accumulated, "lastWordEnd": lastWordEnd])
@@ -75,6 +78,6 @@ enum SpeechProbe {
 
     private static func report(_ value: [String: Any]) {
         if let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
-           let text = String(data: data, encoding: .utf8) { print(text) }
+           let text = String(data: data, encoding: .utf8) { print(text); fflush(stdout) }
     }
 }
