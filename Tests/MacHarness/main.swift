@@ -35,10 +35,23 @@ func key(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
     event.post(tap: .cghidEventTap)
 }
 
-func releaseKeys() {
-    key(49, down: false, flags: [.maskControl, .maskAlternate])
-    key(58, down: false, flags: [.maskControl])
-    key(59, down: false, flags: [])
+func modifierKeys(_ choice: HotkeyChoice) -> [(CGKeyCode, CGEventFlags)] {
+    switch choice {
+    case .controlOptionSpace: return [(59, .maskControl), (58, .maskAlternate)]
+    case .controlShiftSpace: return [(59, .maskControl), (56, .maskShift)]
+    case .optionShiftSpace: return [(58, .maskAlternate), (56, .maskShift)]
+    case .shiftTab: return [(56, .maskShift)]
+    }
+}
+
+func releaseKeys(_ choice: HotkeyChoice) {
+    let modifiers = modifierKeys(choice)
+    var flags = modifiers.reduce(CGEventFlags()) { $0.union($1.1) }
+    key(choice.keyCode, down: false, flags: flags)
+    for (code, flag) in modifiers.reversed() {
+        flags.remove(flag)
+        key(code, down: false, flags: flags)
+    }
 }
 
 // Inspect only LocalFlow's fixed status labels. A no-op hotkey must never make a
@@ -130,15 +143,21 @@ func run() -> Int32 {
         }
     }
     let clipboard = NSPasteboard.general.changeCount
+    let savedShortcut = UserDefaults(suiteName: "io.github.vitoriomexas311.localflow")?.string(forKey: "hotkey")
+    let shortcut = savedShortcut.flatMap(HotkeyChoice.init(rawValue:)) ?? .controlOptionSpace
+    var shortcutFlags = CGEventFlags()
     audio.prepareToPlay()
     let start = ProcessInfo.processInfo.systemUptime
-    key(59, down: true, flags: [.maskControl])
-    key(58, down: true, flags: [.maskControl, .maskAlternate])
-    key(49, down: true, flags: [.maskControl, .maskAlternate])
-    defer { releaseKeys() }
+    for (code, flag) in modifierKeys(shortcut) {
+        shortcutFlags.insert(flag)
+        key(code, down: true, flags: shortcutFlags)
+    }
+    key(shortcut.keyCode, down: true, flags: shortcutFlags)
+    defer { releaseKeys(shortcut) }
     pump(0.8)
-    report(["kind": "held-key-state", "hardwareSpace": CGEventSource.keyState(.hidSystemState, key: 49),
-            "sessionSpace": CGEventSource.keyState(.combinedSessionState, key: 49)])
+    report(["kind": "held-key-state", "hotkey": shortcut.rawValue,
+            "hardwareTrigger": CGEventSource.keyState(.hidSystemState, key: shortcut.keyCode),
+            "sessionTrigger": CGEventSource.keyState(.combinedSessionState, key: shortcut.keyCode)])
     for _ in 0..<20 {
         if localFlowHasStatus("Recording ", prefix: true) { break }
         pump(0.1)
@@ -152,15 +171,15 @@ func run() -> Int32 {
     var cancellationObserved = false
     if args[5] == "cancel" {
         pump(min(1, audio.duration / 2))
-        key(53, down: true, flags: [.maskControl, .maskAlternate])
-        key(53, down: false, flags: [.maskControl, .maskAlternate])
+        key(53, down: true, flags: shortcutFlags)
+        key(53, down: false, flags: shortcutFlags)
     }
     while audio.isPlaying {
         pump(0.05)
         if args[5] == "cancel" && localFlowHasStatus("Cancelled") { cancellationObserved = true }
     }
     pump(0.7)
-    releaseKeys()
+    releaseKeys(shortcut)
     let heldSeconds = ProcessInfo.processInfo.systemUptime - start
     var result = original
     for _ in 0..<200 {
