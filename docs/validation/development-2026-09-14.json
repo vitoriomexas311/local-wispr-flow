@@ -57,6 +57,86 @@
         "wordErrorRate": 0.8588308457711443,
         "wordErrors": 1381
       }
+    },
+    {
+      "sourceCommit": "af7cf573c7c28b8aacac0a3b7b705643fba1c7b5",
+      "localReport": "partial-sixty-3.json",
+      "completedUtterances": [
+        {
+          "firstTimestamp": 0,
+          "hasSpeechMetadata": true,
+          "kind": "partial-metrics",
+          "lastTimestamp": 14.64,
+          "segments": 31,
+          "windowStart": 0
+        },
+        {
+          "firstTimestamp": 14.64,
+          "hasSpeechMetadata": true,
+          "kind": "partial-metrics",
+          "lastTimestamp": 21.75,
+          "segments": 14,
+          "windowStart": 0
+        },
+        {
+          "firstTimestamp": 23.52,
+          "hasSpeechMetadata": true,
+          "kind": "partial-metrics",
+          "lastTimestamp": 41.04,
+          "segments": 33,
+          "windowStart": 0
+        }
+      ],
+      "windows": [
+        {
+          "accumulatedSegments": 9,
+          "audioEnd": 45.00027210884353,
+          "audioStart": 0,
+          "kind": "recognition-window",
+          "lastWordEnd": 43.98,
+          "segments": 9
+        },
+        {
+          "accumulatedSegments": 40,
+          "audioEnd": 57.8243537414966,
+          "audioStart": 43.97859410430839,
+          "kind": "recognition-window",
+          "lastWordEnd": 57.95859410430839,
+          "segments": 31
+        }
+      ],
+      "result": {
+        "elapsedSeconds": 58.09410200000275,
+        "expectedWords": 156,
+        "kind": "injected-audio-real-apple-recognizer",
+        "recognizedWords": 44,
+        "status": "failed",
+        "wordErrorRate": 0.717948717948718,
+        "wordErrors": 112
+      }
+    },
+    {
+      "sourceCommit": "af7cf573c7c28b8aacac0a3b7b705643fba1c7b5",
+      "localReport": "textedit-microphone-6.json",
+      "measurements": [
+        {
+          "hardwareSpace": true,
+          "kind": "held-key-state",
+          "sessionSpace": false
+        },
+        {
+          "case": "normal",
+          "clipboardUnchanged": true,
+          "elapsedSeconds": 28.55685491662007,
+          "expectedWords": 12,
+          "kind": "speakers-to-real-microphone-to-field",
+          "recognizedWords": 0,
+          "status": "failed",
+          "target": "com.apple.TextEdit",
+          "wordErrorRate": 1,
+          "wordErrors": 12
+        }
+      ]
     }
   ]
 }

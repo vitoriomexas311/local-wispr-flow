@@ -5,8 +5,9 @@
 Private hold-to-dictate for macOS 14+. Native Swift, Apple's on-device speech
 engine, no cloud fallback, and no third-party runtime dependencies.
 
-**Experimental. No validated downloadable release yet.** The ten-minute
-recognition test currently loses substantial text; company deployment is blocked.
+**Experimental. No validated downloadable release yet.** A ten-minute
+recognition test lost substantial text. The fixes still require real-device
+acceptance before company deployment.
 
 Hold Control–Option–Space, speak, release, and insert the final text in the
 original field. US English is the first supported language. Local speech assets
