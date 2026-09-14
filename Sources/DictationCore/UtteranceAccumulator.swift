@@ -24,7 +24,9 @@ public struct UtteranceAccumulator: Sendable {
             if abs(old.start - replacement.start) < 0.000_001 { continue }
             // A cumulative result supersedes every earlier utterance it covers.
             if replacement.start <= old.start && replacement.end >= old.end { continue }
-            guard old.end <= replacement.start || old.start >= replacement.end else {
+            // One microsecond absorbs floating-point reassociation at an audio
+            // boundary, while meaningful partial overlap still fails closed.
+            guard old.end - replacement.start <= 0.000_001 || replacement.end - old.start <= 0.000_001 else {
                 // Ambiguous partial overlap is a failure, never silent text loss.
                 throw TimelineError.invalidTiming
             }
