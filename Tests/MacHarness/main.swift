@@ -41,6 +41,26 @@ func releaseKeys() {
     key(59, down: false, flags: [])
 }
 
+// Inspect only LocalFlow's fixed status labels. A no-op hotkey must never make a
+// cancellation test pass merely because the destination happened to stay empty.
+func localFlowHasStatus(_ expected: String, prefix: Bool = false) -> Bool {
+    guard let application = NSRunningApplication.runningApplications(
+        withBundleIdentifier: "io.github.vitoriomexas311.localflow").first else { return false }
+    let app = AXUIElementCreateApplication(application.processIdentifier)
+    AXUIElementSetMessagingTimeout(app, 0.2)
+    var remaining = (attribute(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
+    var visited = 0
+    while let item = remaining.popLast(), visited < 256 {
+        visited += 1
+        if attribute(item, kAXRoleAttribute) as? String == kAXStaticTextRole,
+           let text = attribute(item, kAXValueAttribute) as? String,
+           prefix ? text.hasPrefix(expected) : text == expected { return true }
+        let children = (attribute(item, kAXChildrenAttribute) as? [AXUIElement]) ?? []
+        remaining.append(contentsOf: children.prefix(max(0, 256 - visited - remaining.count)))
+    }
+    return false
+}
+
 @MainActor
 func run() -> Int32 {
     _ = NSApplication.shared
@@ -116,6 +136,15 @@ func run() -> Int32 {
     pump(0.8)
     report(["kind": "held-key-state", "hardwareSpace": CGEventSource.keyState(.hidSystemState, key: 49),
             "sessionSpace": CGEventSource.keyState(.combinedSessionState, key: 49)])
+    for _ in 0..<20 {
+        if localFlowHasStatus("Recording ", prefix: true) { break }
+        pump(0.1)
+    }
+    guard localFlowHasStatus("Recording ", prefix: true) else {
+        report(["status": "failed", "reason": "recording-not-observed", "microphoneStarted": false])
+        return 1
+    }
+    report(["kind": "capture-start", "microphoneStarted": true])
     guard audio.play() else { report(["status": "failed", "reason": "audio-playback"]); return 1 }
     if args[5] == "cancel" {
         pump(min(1, audio.duration / 2))
@@ -129,15 +158,17 @@ func run() -> Int32 {
     for _ in 0..<200 {
         pump(0.1)
         if let value = attribute(target, kAXValueAttribute) as? String { result = value }
-        if args[5] != "cancel" && result != original { pump(0.5); break }
+        if args[5] != "cancel" && result != original && localFlowHasStatus("Inserted") { break }
         if args[5] == "cancel" && ProcessInfo.processInfo.systemUptime - start > audio.duration + 4 { break }
     }
     if let value = attribute(target, kAXValueAttribute) as? String { result = value }
     let clipboardUnchanged = clipboard == NSPasteboard.general.changeCount
     if args[5] == "cancel" {
-        let passed = result == original && clipboardUnchanged
+        let cancellationObserved = localFlowHasStatus("Cancelled")
+        let passed = result == original && clipboardUnchanged && cancellationObserved
         report(["status": passed ? "passed" : "failed", "kind": "real-microphone-cancellation",
-                "target": args[4], "fieldUnchanged": result == original, "clipboardUnchanged": clipboardUnchanged])
+                "target": args[4], "fieldUnchanged": result == original, "clipboardUnchanged": clipboardUnchanged,
+                "microphoneStarted": true, "cancellationObserved": cancellationObserved])
         return passed ? 0 : 1
     }
     guard let marker = result.range(of: "LOCALFLOW_TEST ", options: .backwards) else {
@@ -147,11 +178,14 @@ func run() -> Int32 {
     let suffix = String(result[marker.upperBound...])
     let recognized = terminal ? String(suffix.prefix(while: { $0 != "\n" && $0 != "\r" })) : suffix
     let score = SpeechScore(expected: expected, recognized: recognized)
-    let passed = result != original && score.wordErrorRate <= 0.15 && clipboardUnchanged && !recognized.contains("\n")
+    let insertionObserved = localFlowHasStatus("Inserted")
+    let passed = result != original && score.wordErrorRate <= 0.15 && clipboardUnchanged &&
+        !recognized.contains("\n") && insertionObserved
     report(["status": passed ? "passed" : "failed", "kind": "speakers-to-real-microphone-to-field",
             "target": args[4], "case": args[5], "expectedWords": score.expectedWords,
             "recognizedWords": score.recognizedWords, "wordErrors": score.errors,
             "wordErrorRate": score.wordErrorRate, "clipboardUnchanged": clipboardUnchanged,
+            "microphoneStarted": true, "insertionObserved": insertionObserved,
             "elapsedSeconds": ProcessInfo.processInfo.systemUptime - start])
     return passed ? 0 : 1
 }

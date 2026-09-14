@@ -22,6 +22,9 @@ the explicit destination, holds the production shortcut using native events,
 and plays synthetic speech through the speakers. LocalFlow must capture the
 real microphone. This differs from LocalFlow's injected-audio `--verify-speech`
 probe. Record both input and output devices and ambient conditions separately.
+Keep LocalFlow's Setup window open in the background: the driver verifies its
+fixed recording and completion/cancellation labels. An unchanged field with no
+observed recording is a failure, including in the cancellation case.
 
 The driver never logs field contents or clipboard contents. JSON reports contain
 counts, timings, booleans, and enumerated reasons only. `open` does not propagate
