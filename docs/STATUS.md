@@ -7,7 +7,7 @@ No release has passed real-device acceptance yet.
 - Public repository created with atomic commits directly on main.
 - Native release app builds locally. The system CLT installation is unchanged;
   `scripts/local-swift.sh` supplies an isolated overlay for its stale files.
-- Eighteen core tests pass; all seven core source files have 100% executable-line
+- Twenty-one core tests pass; all eight core source files have 100% executable-line
   coverage. This does not measure Apple's engine or platform adapters.
 - Speech, microphone, Accessibility, and Input Monitoring permission setup has
   been exercised through the app. Ad-hoc rebuilt apps may require new grants.
@@ -27,22 +27,32 @@ No release has passed real-device acceptance yet.
 - First speaker-to-microphone TextEdit attempt inserted no words: failed. It
   does not establish that microphone capture was reached. Clipboard unchanged.
 - A full 600-second injected-audio test failed: 1,608 expected words, 235
-  recognized, 1,381 word errors (85.88% WER). Do not use this build for long
-  dictation. Per-window and partial-result diagnostics have been added to locate
-  the loss without logging text. An utterance-reset issue reported for Apple's
-  local engine is a hypothesis, not yet a confirmed diagnosis on this Mac.
-- After the owner unlocked Privacy & Security, LocalFlow was added to Input
-  Monitoring and restarted; that permission now reports allowed. Speech,
-  Microphone, and Accessibility still report permission needed. Subsequent
-  diagnostics and hardware tests await those owner-completed grants; computer
-  use cannot access the OS permission-alert app.
+  recognized, 1,381 word errors (85.88% WER). A subsequent 58-second trace on
+  `af7cf57` confirmed that Apple's local engine completed three earlier
+  utterances (78 segments) before returning only nine segments in the first
+  window's final callback. The completed-utterance accumulator and adapter fix
+  are implemented and core-tested; real recognition retesting remains required.
+- All four grants were verified allowed for the diagnostic `af7cf57` build.
+  Its TextEdit attempt still inserted nothing: the hardware Space state was true
+  while the downstream session state was false. The event tap consumes Space;
+  the hold check now uses the upstream HID state. Hardware retesting is required.
+- Unsigned rebuilt apps require fresh OS grants. Computer use cannot access the
+  permission-alert app. Existing keyboard grants may show enabled yet refer to
+  an obsolete signature; reset only LocalFlow's affected grant and approve the
+  current bundle through normal macOS settings.
+- Keep public diagnostic audio in a temporary folder. Reading a fixture under
+  Documents can wait for an unrelated Files & Folders grant before recognition
+  starts; the production microphone flow requires no document-file access.
 - Native build, core coverage, and installer checks passed on macOS 14, 15, and
   26 at `14dc071`. Its separate architecture check had an incorrectly ordered
   `lipo` command; `46ebcd9` fixes that. Fresh CI must verify both architectures.
 - The native hardware driver now requires observed Recording and explicit
   Inserted/Cancelled status. An unchanged empty field alone cannot pass a
-  cancellation test. This driver change has compiled; hardware validation awaits
-  the permissions above.
+  cancellation test. This driver change has compiled; hardware validation remains
+  outstanding.
+- Both CI and Security passed at `af7cf57`, including both architecture builds,
+  all three macOS runners, CodeQL, Gitleaks, shell checks, and release-gate tests.
+  The subsequent speech/hotkey fixes require fresh CI and hardware evidence.
 - The owner's photograph is now the app/menu-bar icon. Exported assets contain
   pixels and color-space information only. The original photo is not committed.
 
