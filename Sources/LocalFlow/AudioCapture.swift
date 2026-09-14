@@ -20,6 +20,7 @@ final class AudioCapture {
     private var active = false
     private var tapInstalled = false
     private var format: AVAudioFormat?
+    var isRunning: Bool { engine.isRunning }
 
     func start() throws {
         let input = engine.inputNode
