@@ -9,12 +9,14 @@ Create a new TextEdit document containing exactly `LOCALFLOW_TEST `, or
 app with its normal permissions. Generate public fixture audio locally:
 
 ```sh
-mkdir -p .build/fixtures .build/evidence
-say -v 'Eddy (English (US))' -r 145 -f Tests/Fixtures/short.txt -o .build/fixtures/short.aiff
+mkdir -p .build/evidence
+fixture_dir="$(mktemp -d /tmp/localflow-public-fixtures.XXXXXX)"
+cp Tests/Fixtures/short.txt "$fixture_dir/short.txt"
+say -v 'Eddy (English (US))' -r 145 -f "$fixture_dir/short.txt" -o "$fixture_dir/short.aiff"
 open -g -n -W --stdout "$PWD/.build/evidence/microphone.json" \
   --stderr "$PWD/.build/evidence/microphone.stderr" .build/LocalFlowHarness.app \
-  --args --dictate "$PWD/.build/fixtures/short.aiff" \
-  "$PWD/Tests/Fixtures/short.txt" com.apple.TextEdit normal
+  --args --dictate "$fixture_dir/short.aiff" \
+  "$fixture_dir/short.txt" com.apple.TextEdit normal
 ```
 
 Cases: `normal`, `selection`, `cancel`. The driver checks a test marker, activates
@@ -25,6 +27,9 @@ probe. Record both input and output devices and ambient conditions separately.
 Keep LocalFlow's Setup window open in the background: the driver verifies its
 fixed recording and completion/cancellation labels. An unchanged field with no
 observed recording is a failure, including in the cancellation case.
+Fixtures may be up to 600 seconds. Reports include the measured shortcut hold
+duration so the full-duration gate can be checked. A temporary fixture directory
+avoids requesting access to Documents; use public synthetic audio only.
 
 The driver never logs field contents or clipboard contents. JSON reports contain
 counts, timings, booleans, and enumerated reasons only. `open` does not propagate
