@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<title>LocalFlow browser acceptance fixture</title>
+<style>
+body{font:18px system-ui;max-width:720px;margin:48px auto;padding:0 24px;background:#fafafa;color:#171717}
+label{display:block;margin:24px 0 8px}input,textarea{box-sizing:border-box;width:100%;padding:14px;font:inherit}
+textarea{min-height:130px}small{display:block;margin-top:24px}
+</style>
+<h1>LocalFlow test fields</h1>
+<p>Public test data only. This page has no scripts or external resources.</p>
+<form>
+<label for="single">Single-line test field</label>
+<input id="single" name="single" value="LOCALFLOW_TEST " autocomplete="off" spellcheck="false">
+<label for="multi">Multiline test field</label>
+<textarea id="multi" name="multi" autocomplete="off" spellcheck="false">LOCALFLOW_TEST </textarea>
+<label for="protected">Protected field — dictation must be refused</label>
+<input id="protected" type="password" autocomplete="off" value="synthetic-test-only">
+<label for="readonly">Read-only field — insertion must fail safely</label>
+<input id="readonly" readonly value="LOCALFLOW_TEST ">
+</form>
+<small>The form cannot navigate or send data. Verify Return is never generated separately in Terminal/OpenCode.</small>
+</html>
