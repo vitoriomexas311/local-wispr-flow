@@ -16,6 +16,9 @@ fi
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary_dir/LocalFlow" "$bundle/Contents/MacOS/LocalFlow"
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
+source_commit="$(git rev-parse HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then source_commit="$source_commit-dirty"; fi
+/usr/libexec/PlistBuddy -c "Add :LocalFlowSourceCommit string $source_commit" "$bundle/Contents/Info.plist"
 codesign --force --sign - --options runtime --entitlements Resources/LocalFlow.entitlements "$bundle"
 codesign --verify --strict "$bundle"
 printf '%s\n' "$bundle"

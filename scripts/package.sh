@@ -14,7 +14,7 @@ mkdir "$payload"
 ditto "$source_app" "$payload/LocalFlow.app"
 cp Distribution/install.sh Distribution/uninstall.sh Distribution/SETUP.txt LICENSE "$payload/"
 printf '%s\n' "$architecture" > "$payload/ARCHITECTURE"
-git rev-parse HEAD > "$payload/SOURCE_COMMIT"
+/usr/libexec/PlistBuddy -c 'Print :LocalFlowSourceCommit' "$source_app/Contents/Info.plist" > "$payload/SOURCE_COMMIT"
 printf '%s\n' 'Unreleased build. Hardware acceptance must be verified before distribution.' > "$payload/VALIDATION.txt"
 python3 - "$payload" <<'PY'
 import hashlib

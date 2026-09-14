@@ -7,7 +7,7 @@ artifacts/
 *.profraw
 *.profdata
 .DS_Store
+__pycache__/
 .env*
 *.p12
 *.mobileprovision
-
