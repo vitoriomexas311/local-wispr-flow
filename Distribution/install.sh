@@ -23,7 +23,7 @@ if [[ "${1:-}" == --rollback ]]; then
 else
     [[ $# -eq 0 ]] || fail 'Usage: bash install.sh [--rollback]'
     cd "$package_root"
-    [[ "$(cat ARCHITECTURE)" == "$(uname -m)" ]] || fail 'Download the ZIP for this Mac’s architecture.'
+    [[ "$(cat ARCHITECTURE)" == "$(uname -m)" ]] || fail 'Download the ZIP matching this Mac architecture.'
     /usr/bin/shasum -a 256 -c CHECKSUMS.sha256 || fail 'Package checksum verification failed.'
     source_app="$package_root/LocalFlow.app"
 fi
