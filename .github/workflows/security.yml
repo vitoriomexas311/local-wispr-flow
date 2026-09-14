@@ -53,3 +53,5 @@ jobs:
         run: shellcheck Distribution/*.sh scripts/*.sh Tests/Installer/*.sh
       - name: Validate pinned actions and privacy guardrails
         run: python3 scripts/check-supply-chain.py
+      - name: Test release evidence gate
+        run: python3 Tests/Release/test_release.py

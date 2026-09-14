@@ -15,6 +15,12 @@ if /usr/bin/pgrep -x LocalFlow >/dev/null; then
 fi
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary_dir/LocalFlow" "$bundle/Contents/MacOS/LocalFlow"
+# The isolated mixed-CLT workaround also supports Swift Testing. Its development
+# framework search path must not be inherited by the distributed application.
+development_frameworks='/Library/Developer/CommandLineTools/Library/Developer/Frameworks'
+if otool -l "$bundle/Contents/MacOS/LocalFlow" | awk -v expected="$development_frameworks" '$1 == "path" && $2 == expected {found=1} END {exit !found}'; then
+    install_name_tool -delete_rpath "$development_frameworks" "$bundle/Contents/MacOS/LocalFlow"
+fi
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
 cp Resources/LocalFlow.icns "$bundle/Contents/Resources/LocalFlow.icns"
 source_commit="$(git rev-parse HEAD)"
