@@ -4,10 +4,12 @@ import PackageDescription
 let package = Package(
     name: "LocalFlow",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "LocalFlow", targets: ["LocalFlow"])],
+    products: [.executable(name: "LocalFlow", targets: ["LocalFlow"]),
+               .executable(name: "LocalFlowHarness", targets: ["LocalFlowHarness"])],
     targets: [
         .target(name: "DictationCore"),
         .executableTarget(name: "LocalFlow", dependencies: ["DictationCore"]),
+        .executableTarget(name: "LocalFlowHarness", dependencies: ["DictationCore"], path: "Tests/MacHarness"),
         .testTarget(name: "DictationCoreTests", dependencies: ["DictationCore"])
     ],
     swiftLanguageModes: [.v5]
