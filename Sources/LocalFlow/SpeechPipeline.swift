@@ -26,6 +26,7 @@ final class SpeechPipeline {
     private var pending: [AudioChunk] = []
     private var pendingSeconds: Double = 0
     private var timeline = TranscriptTimeline()
+    private var utterances = UtteranceAccumulator()
 
     @discardableResult
     func start(generation: UInt64) -> Bool {
@@ -54,6 +55,7 @@ final class SpeechPipeline {
         replayDuration = replay.reduce(0) { $0 + $1.duration }
         closing = false
         history = []
+        utterances.clear()
         window &+= 1
         let expectedWindow = window
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -65,8 +67,19 @@ final class SpeechPipeline {
                         segments.first?.timestamp ?? 0,
                         segments.last.map { $0.timestamp + $0.duration } ?? 0)
                 }
+                if let result, result.isFinal || result.speechRecognitionMetadata != nil {
+                    // On-device engines can complete an utterance and then reset
+                    // the hypothesis without isFinal. Only completed results have
+                    // trustworthy timing; transient partials can contain 0.01s placeholders.
+                    guard let words = self.timedWords(result.bestTranscription) else {
+                        self.fail(.recognitionFailed)
+                        return
+                    }
+                    do { try self.utterances.update(words) }
+                    catch { self.fail(.recognitionFailed); return }
+                }
                 if let result, result.isFinal {
-                    self.completeWindow(result.bestTranscription)
+                    self.completeWindow()
                 } else if error != nil {
                     // Never put NSError descriptions or recognition content into diagnostics.
                     self.fail(.recognitionFailed)
@@ -118,17 +131,22 @@ final class SpeechPipeline {
         if live && closing && now - closedAt >= 12 { fail(.recognitionTimeout) }
     }
 
-    private func completeWindow(_ transcription: SFTranscription) {
+    private func timedWords(_ transcription: SFTranscription) -> [TimedWord]? {
         let text = transcription.formattedString as NSString
         let segments = transcription.segments
         var words: [TimedWord] = []
         for (index, segment) in segments.enumerated() {
             let end = index + 1 < segments.count ? segments[index + 1].substringRange.location : text.length
             let start = segment.substringRange.location
-            guard start >= 0, end >= start, end <= text.length else { fail(.recognitionFailed); return }
+            guard start >= 0, end >= start, end <= text.length else { return nil }
             words.append(TimedWord(text: text.substring(with: NSRange(location: start, length: end - start)),
                                    start: origin + segment.timestamp, duration: segment.duration))
         }
+        return words
+    }
+
+    private func completeWindow() {
+        let words = utterances.words
         do { try timeline.append(words, windowStart: origin, replayDuration: replayDuration) }
         catch { fail(.recognitionFailed); return }
         onWindowMetrics?(origin, windowEnd, words.count, timeline.words.count,
@@ -171,5 +189,6 @@ final class SpeechPipeline {
         finishing = false
         closing = false
         timeline.clear()
+        utterances.clear()
     }
 }
