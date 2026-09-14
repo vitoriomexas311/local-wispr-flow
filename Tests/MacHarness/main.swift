@@ -146,18 +146,23 @@ func run() -> Int32 {
     }
     report(["kind": "capture-start", "microphoneStarted": true])
     guard audio.play() else { report(["status": "failed", "reason": "audio-playback"]); return 1 }
+    var cancellationObserved = false
     if args[5] == "cancel" {
         pump(min(1, audio.duration / 2))
         key(53, down: true, flags: [.maskControl, .maskAlternate])
         key(53, down: false, flags: [.maskControl, .maskAlternate])
     }
-    while audio.isPlaying { pump(0.05) }
+    while audio.isPlaying {
+        pump(0.05)
+        if args[5] == "cancel" && localFlowHasStatus("Cancelled") { cancellationObserved = true }
+    }
     pump(0.7)
     releaseKeys()
     let heldSeconds = ProcessInfo.processInfo.systemUptime - start
     var result = original
     for _ in 0..<200 {
         pump(0.1)
+        if args[5] == "cancel" && localFlowHasStatus("Cancelled") { cancellationObserved = true }
         if let value = attribute(target, kAXValueAttribute) as? String { result = value }
         if args[5] != "cancel" && result != original && localFlowHasStatus("Inserted") { break }
         if args[5] == "cancel" && ProcessInfo.processInfo.systemUptime - start > audio.duration + 4 { break }
@@ -165,7 +170,6 @@ func run() -> Int32 {
     if let value = attribute(target, kAXValueAttribute) as? String { result = value }
     let clipboardUnchanged = clipboard == NSPasteboard.general.changeCount
     if args[5] == "cancel" {
-        let cancellationObserved = localFlowHasStatus("Cancelled")
         let passed = result == original && clipboardUnchanged && cancellationObserved
         report(["status": passed ? "passed" : "failed", "kind": "real-microphone-cancellation",
                 "target": args[4], "fieldUnchanged": result == original, "clipboardUnchanged": clipboardUnchanged,
