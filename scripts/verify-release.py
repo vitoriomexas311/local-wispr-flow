@@ -2,6 +2,7 @@
 """Validate external hardware evidence against the exact tested archive and SHA."""
 import hashlib
 import json
+import math
 import pathlib
 import plistlib
 import re
@@ -54,8 +55,10 @@ def verify(report, archive, commit):
             raise ValueError(f"Evidence reference missing: {case['id']}")
         if case["id"].startswith("offline.") and case.get("externalNetworking") != "unavailable-device-wide":
             raise ValueError("Offline evidence must isolate the entire device")
-        if case["id"] == "duration.ten-minute-hold" and case.get("heldSeconds", 0) < 600:
-            raise ValueError("Ten-minute microphone hold was not measured")
+        if case["id"] == "duration.ten-minute-hold":
+            duration = case.get("heldSeconds")
+            if type(duration) not in (int, float) or not math.isfinite(duration) or duration < 600:
+                raise ValueError("Ten-minute microphone hold requires a finite measured duration of at least 600 seconds")
 
 
 if __name__ == "__main__":

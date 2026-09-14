@@ -44,10 +44,15 @@ class GateTests(unittest.TestCase):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     gate.verify(modified, archive, commit)
             for name, key, value in [("offline.cold-start", "externalNetworking", "app-only-sandbox"),
-                                     ("duration.ten-minute-hold", "heldSeconds", 599)]:
+                                     ("duration.ten-minute-hold", "heldSeconds", 599),
+                                     ("duration.ten-minute-hold", "heldSeconds", float("nan")),
+                                     ("duration.ten-minute-hold", "heldSeconds", float("inf")),
+                                     ("duration.ten-minute-hold", "heldSeconds", "600"),
+                                     ("duration.ten-minute-hold", "heldSeconds", True),
+                                     ("duration.ten-minute-hold", "heldSeconds", None)]:
                 modified = copy.deepcopy(report)
                 next(case for case in modified["cases"] if case["id"] == name)[key] = value
-                with self.subTest(name=name), self.assertRaises(ValueError):
+                with self.subTest(name=name, value=value), self.assertRaises(ValueError):
                     gate.verify(modified, archive, commit)
             modified = copy.deepcopy(report)
             modified["cases"].append(modified["cases"][0])
