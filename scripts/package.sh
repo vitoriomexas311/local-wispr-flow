@@ -13,9 +13,10 @@ payload="$stage/LocalFlow-$architecture"
 mkdir "$payload"
 ditto "$source_app" "$payload/LocalFlow.app"
 cp Distribution/install.sh Distribution/uninstall.sh Distribution/SETUP.txt LICENSE "$payload/"
+cp docs/DEPENDENCIES.md "$payload/DEPENDENCIES.md"
 printf '%s\n' "$architecture" > "$payload/ARCHITECTURE"
 /usr/libexec/PlistBuddy -c 'Print :LocalFlowSourceCommit' "$source_app/Contents/Info.plist" > "$payload/SOURCE_COMMIT"
-printf '%s\n' 'Unreleased build. Hardware acceptance must be verified before distribution.' > "$payload/VALIDATION.txt"
+printf '%s\n' 'Development candidate unless accompanied by passing hardware evidence for its exact ZIP SHA-256 and SOURCE_COMMIT. Check the matching GitHub release validation before deployment.' > "$payload/VALIDATION.txt"
 python3 - "$payload" <<'PY'
 import hashlib
 import pathlib
@@ -33,5 +34,5 @@ PY
 codesign --verify --strict "$payload/LocalFlow.app"
 archive="$repo_root/dist/LocalFlow-$architecture-draft.zip"
 ditto -c -k --keepParent "$payload" "$archive"
-shasum -a 256 "$archive" > "$archive.sha256"
+(cd "$repo_root/dist" && shasum -a 256 "LocalFlow-$architecture-draft.zip" > "LocalFlow-$architecture-draft.zip.sha256")
 printf 'Local draft package: %s\n' "$archive"
