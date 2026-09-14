@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var setupWindow: NSWindow?
     private var readinessLabel: NSTextField?
+    private var statusLabel: NSTextField?
     private var refreshTimer: Timer?
     private let controller = DictationController()
     private let indicator = RecordingIndicator()
@@ -32,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onStatus = { [weak self] message, active in
             self?.statusItem.button?.title = active ? "● LF" : "LF"
             self?.statusItem.button?.toolTip = message
+            self?.statusLabel?.stringValue = message
             self?.indicator.show(message, active: active)
         }
         controller.start()
@@ -66,6 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             readiness.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             stack.addArrangedSubview(readiness)
             readinessLabel = readiness
+            let status = NSTextField(wrappingLabelWithString: "Ready after all permissions are allowed")
+            status.textColor = .secondaryLabelColor
+            stack.addArrangedSubview(status)
+            statusLabel = status
             let buttons: [(String, Selector)] = [
                 ("1. Prepare Speech", #selector(prepareSpeech)),
                 ("2. Allow Microphone", #selector(allowMicrophone)),
