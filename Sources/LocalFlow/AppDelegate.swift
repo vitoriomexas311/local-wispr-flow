@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             note.textColor = .secondaryLabelColor
             stack.addArrangedSubview(note)
             let picker = NSPopUpButton()
-            picker.addItems(withTitles: ["Control–Option–Space", "Control–Shift–Space", "Option–Shift–Space"])
+            picker.addItems(withTitles: ["Control–Option–Space", "Control–Shift–Space", "Option–Shift–Space", "Shift–Tab"])
             picker.selectItem(at: HotkeyChoice.allCases.firstIndex(of: controller.hotkey) ?? 0)
             picker.target = self
             picker.action = #selector(changeHotkey)

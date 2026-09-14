@@ -22,9 +22,9 @@ final class HotkeyMonitor {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     var isInstalled: Bool { tap != nil }
-    // The session tap consumes Space, so the downstream combined-session table
+    // The session tap consumes the trigger, so the downstream combined-session table
     // never sees its key-down. The HID table still tracks release/lost-release.
-    var isHeld: Bool { policy.isHeld && CGEventSource.keyState(.hidSystemState, key: 49) }
+    var isHeld: Bool { policy.isHeld && CGEventSource.keyState(.hidSystemState, key: policy.choice.keyCode) }
     var modifiersDown: Bool { !LocalEvent.modifiers(CGEventSource.flagsState(.combinedSessionState)).isEmpty }
 
     @discardableResult

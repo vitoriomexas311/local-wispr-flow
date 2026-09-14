@@ -21,7 +21,8 @@ open -g -n -W --stdout "$PWD/.build/evidence/microphone.json" \
 
 Cases: `normal`, `selection`, `cancel`. The driver checks a test marker, activates
 the explicit destination, holds the production shortcut using native events,
-and plays synthetic speech through the speakers. LocalFlow must capture the
+and plays synthetic speech through the speakers. It reads the saved LocalFlow
+shortcut setting and reports the chosen shortcut, including Shift–Tab. LocalFlow must capture the
 real microphone. This differs from LocalFlow's injected-audio `--verify-speech`
 probe. Record both input and output devices and ambient conditions separately.
 Keep LocalFlow's Setup window open in the background: the driver verifies its

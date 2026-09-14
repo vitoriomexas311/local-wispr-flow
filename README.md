@@ -13,6 +13,10 @@ Hold Control–Option–Space, speak, release, and insert the final text in the
 original field. US English is the first supported language. Local speech assets
 must be installed before offline use. Unsupported configurations refuse capture.
 
+Choose another shortcut in LocalFlow Setup, including Shift–Tab. That choice
+uses Shift–Tab for dictation while LocalFlow is listening, overriding its usual
+backward focus navigation. Plain Tab continues to work normally.
+
 Application, installer, and test code are MIT licensed. Apple's speech framework
 and model are proprietary macOS components.
 

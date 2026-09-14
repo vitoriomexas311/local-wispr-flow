@@ -8,12 +8,14 @@ public struct KeyModifiers: OptionSet, Equatable, Sendable {
 }
 
 public enum HotkeyChoice: String, CaseIterable, Sendable {
-    case controlOptionSpace, controlShiftSpace, optionShiftSpace
+    case controlOptionSpace, controlShiftSpace, optionShiftSpace, shiftTab
+    public var keyCode: UInt16 { self == .shiftTab ? 48 : 49 }
     public var modifiers: KeyModifiers {
         switch self {
         case .controlOptionSpace: return [.control, .option]
         case .controlShiftSpace: return [.control, .shift]
         case .optionShiftSpace: return [.option, .shift]
+        case .shiftTab: return [.shift]
         }
     }
 }
@@ -43,15 +45,15 @@ public struct HotkeyPolicy: Sendable {
             isHeld = false
             return HotkeyDecision(action: .interrupted)
         case .keyDown:
-            if keyCode == 49 && isHeld { return HotkeyDecision(consume: true) }
-            if keyCode == 49 && modifiers == choice.modifiers && !repeated {
+            if keyCode == choice.keyCode && isHeld { return HotkeyDecision(consume: true) }
+            if keyCode == choice.keyCode && modifiers == choice.modifiers && !repeated {
                 isHeld = true
                 return HotkeyDecision(consume: true, action: .begin)
             }
             if keyCode == 53 && sessionActive { return HotkeyDecision(consume: true, action: .cancel) }
             if sessionActive { return HotkeyDecision(action: .activity) }
         case .keyUp:
-            if keyCode == 49 && isHeld {
+            if keyCode == choice.keyCode && isHeld {
                 isHeld = false
                 return HotkeyDecision(consume: true, action: .release)
             }
