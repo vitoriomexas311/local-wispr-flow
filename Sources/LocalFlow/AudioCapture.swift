@@ -25,11 +25,14 @@ final class AudioCapture {
     func start() throws {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else { throw AudioCaptureError.unavailable }
+        guard format.sampleRate > 0, format.channelCount > 0,
+              let capacity = Int(exactly: (format.sampleRate * 5).rounded(.up)), capacity > 0 else {
+            throw AudioCaptureError.unavailable
+        }
         lock.withLock {
             self.format = format
             chunks = []
-            budget = BufferBudget(capacity: Int(format.sampleRate * 5))
+            budget = BufferBudget(capacity: capacity)
             sampleCursor = 0
             failed = false
             active = true
@@ -55,8 +58,10 @@ final class AudioCapture {
             let destination = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
             guard source.count == destination.count else { failed = true; return }
             for index in source.indices {
-                guard let from = source[index].mData, let to = destination[index].mData else { failed = true; return }
-                memcpy(to, from, Int(source[index].mDataByteSize))
+                let bytes = destination[index].mDataByteSize
+                guard bytes > 0, source[index].mDataByteSize >= bytes,
+                      let from = source[index].mData, let to = destination[index].mData else { failed = true; return }
+                memcpy(to, from, Int(bytes))
             }
             chunks.append(AudioChunk(buffer: copy, start: Double(sampleCursor) / buffer.format.sampleRate))
             sampleCursor += Int64(buffer.frameLength)
