@@ -91,7 +91,7 @@ func run() -> Int32 {
         report(["status": "blocked", "reason": "target-not-frontmost"])
         return 2
     }
-    guard let audio = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: args[2])), audio.duration <= 590 else {
+    guard let audio = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: args[2])), audio.duration <= 600 else {
         report(["status": "blocked", "reason": "audio-fixture-unavailable"])
         return 2
     }
@@ -154,6 +154,7 @@ func run() -> Int32 {
     while audio.isPlaying { pump(0.05) }
     pump(0.7)
     releaseKeys()
+    let heldSeconds = ProcessInfo.processInfo.systemUptime - start
     var result = original
     for _ in 0..<200 {
         pump(0.1)
@@ -186,6 +187,7 @@ func run() -> Int32 {
             "recognizedWords": score.recognizedWords, "wordErrors": score.errors,
             "wordErrorRate": score.wordErrorRate, "clipboardUnchanged": clipboardUnchanged,
             "microphoneStarted": true, "insertionObserved": insertionObserved,
+            "heldSeconds": heldSeconds,
             "elapsedSeconds": ProcessInfo.processInfo.systemUptime - start])
     return passed ? 0 : 1
 }

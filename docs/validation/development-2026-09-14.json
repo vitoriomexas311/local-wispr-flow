@@ -5,7 +5,7 @@
   "macOS": "14.8.4",
   "architecture": "arm64",
   "sourceCommit": null,
-  "provenanceNote": "These development runs predate embedded build provenance; they cannot satisfy release acceptance.",
+  "provenanceNote": "Early runs predate embedded provenance; later records identify their source commit. These development diagnostics do not satisfy release acceptance.",
   "tests": [
     {
       "localReport": "speech-probe.json",
