@@ -119,7 +119,10 @@ func run() -> Int32 {
         return 2
     }
     if args[5] == "selection" {
-        var range = CFRange(location: 15, length: 10)
+        // Accessibility uses UTF-16 offsets. Derive the suffix range from the
+        // marker instead of selecting past the end of the test document.
+        let markerLength = "LOCALFLOW_TEST ".utf16.count
+        var range = CFRange(location: markerLength, length: original.utf16.count - markerLength)
         guard let value = AXValueCreate(.cfRange, &range),
               AXUIElementSetAttributeValue(target, kAXSelectedTextRangeAttribute as CFString, value) == .success else {
             report(["status": "blocked", "reason": "selection-unavailable"])
