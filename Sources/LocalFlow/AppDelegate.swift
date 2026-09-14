@@ -115,6 +115,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupWindow?.makeKeyAndOrderFront(nil)
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSetup()
+        return true
+    }
+
     private func refreshReadiness() {
         let readiness = Permissions.snapshot()
         readinessLabel?.stringValue = "Speech: \(readiness.speechAuthorized ? "allowed" : "permission needed") · " +
