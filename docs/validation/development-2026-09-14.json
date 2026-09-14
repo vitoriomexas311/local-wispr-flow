@@ -1,0 +1,62 @@
+{
+  "schema": "development-evidence-1",
+  "releaseEligible": false,
+  "date": "2026-09-14",
+  "macOS": "14.8.4",
+  "architecture": "arm64",
+  "sourceCommit": null,
+  "provenanceNote": "These development runs predate embedded build provenance; they cannot satisfy release acceptance.",
+  "tests": [
+    {
+      "localReport": "speech-probe.json",
+      "result": {
+        "elapsedSeconds": 6.227779624983668,
+        "expectedWords": 12,
+        "kind": "injected-audio-real-apple-recognizer",
+        "recognizedWords": 11,
+        "status": "failed",
+        "wordErrorRate": 0.25,
+        "wordErrors": 3
+      }
+    },
+    {
+      "localReport": "speech-probe-eddy.json",
+      "result": {
+        "elapsedSeconds": 4.51735779165756,
+        "expectedWords": 12,
+        "kind": "injected-audio-real-apple-recognizer",
+        "recognizedWords": 11,
+        "status": "passed",
+        "wordErrorRate": 0.08333333333333333,
+        "wordErrors": 1
+      }
+    },
+    {
+      "localReport": "textedit-microphone-5.json",
+      "result": {
+        "case": "normal",
+        "clipboardUnchanged": true,
+        "elapsedSeconds": 28.579723333357833,
+        "expectedWords": 12,
+        "kind": "speakers-to-real-microphone-to-field",
+        "recognizedWords": 0,
+        "status": "failed",
+        "target": "com.apple.TextEdit",
+        "wordErrorRate": 1,
+        "wordErrors": 12
+      }
+    },
+    {
+      "localReport": "ten-minute-engine-1.json",
+      "result": {
+        "elapsedSeconds": 600.0449898333172,
+        "expectedWords": 1608,
+        "kind": "injected-audio-real-apple-recognizer",
+        "recognizedWords": 235,
+        "status": "failed",
+        "wordErrorRate": 0.8588308457711443,
+        "wordErrors": 1381
+      }
+    }
+  ]
+}

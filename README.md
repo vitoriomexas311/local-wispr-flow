@@ -1,9 +1,12 @@
 # LocalFlow
 
+<img src="Resources/LocalFlow.png" width="112" alt="LocalFlow photo icon">
+
 Private hold-to-dictate for macOS 14+. Native Swift, Apple's on-device speech
 engine, no cloud fallback, and no third-party runtime dependencies.
 
-**Development in progress. No validated downloadable release yet.**
+**Experimental. No validated downloadable release yet.** The ten-minute
+recognition test currently loses substantial text; company deployment is blocked.
 
 Hold Control–Option–Space, speak, release, and insert the final text in the
 original field. US English is the first supported language. Local speech assets
@@ -20,3 +23,19 @@ store or transmit the text you insert. This project does not certify CUI
 compliance or control macOS memory, diagnostics, or other applications.
 
 See [the threat model](docs/THREAT_MODEL.md) and [implementation status](docs/STATUS.md).
+
+## Development
+
+```sh
+scripts/local-swift.sh test --disable-xctest --enable-code-coverage
+scripts/build-app.sh
+scripts/package.sh
+```
+
+Quit LocalFlow before replacing its development bundle. The package is created
+under `dist/` as a local draft. It installs using `bash ./install.sh`, without
+downloads, a compiler, a package manager, or sudo. macOS approval and permissions
+remain explicit. No quarantine or Gatekeeper bypass is included.
+
+[Hardware acceptance](docs/ACCEPTANCE.md), [dependency inventory](docs/DEPENDENCIES.md),
+and [native test driver](Tests/MacHarness/README.md) describe the remaining gates.
