@@ -6,12 +6,24 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            xcode: '16.2'
+          - os: macos-15
+            xcode: '16.4'
+          - os: macos-26
+            xcode: '26.3'
+    runs-on: ${{ matrix.os }}
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - run: swift build
       - run: swift test --disable-xctest --enable-code-coverage
+      - name: Enforce complete core line coverage
+        run: python3 scripts/check-coverage.py "$(swift build --show-bin-path)/codecov/LocalFlow.json"
