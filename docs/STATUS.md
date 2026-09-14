@@ -7,7 +7,7 @@ No release has passed real-device acceptance yet.
 - Public repository created with atomic commits directly on main.
 - Native release app builds locally. The system CLT installation is unchanged;
   `scripts/local-swift.sh` supplies an isolated overlay for its stale files.
-- Twenty-one core tests pass; all eight core source files have 100% executable-line
+- Twenty-two core tests pass; all eight core source files have 100% executable-line
   coverage. This does not measure Apple's engine or platform adapters.
 - Speech, microphone, Accessibility, and Input Monitoring permission setup has
   been exercised through the app. Ad-hoc rebuilt apps may require new grants.
@@ -32,10 +32,27 @@ No release has passed real-device acceptance yet.
   utterances (78 segments) before returning only nine segments in the first
   window's final callback. The completed-utterance accumulator and adapter fix
   are implemented and core-tested; real recognition retesting remains required.
+- The 58-second injected-audio retest at `613cedb` passed with 140 recognized
+  words, 16 errors out of 156 expected words (10.26% WER), down from 71.79%.
+  The following long run stopped in its third window after adjacent utterance
+  boundaries. A floating-point adjacency regression was reproduced and fixed;
+  the full ten-minute rerun is still outstanding. Diagnostics now identify the
+  failing stage without recording content or OS error descriptions.
 - All four grants were verified allowed for the diagnostic `af7cf57` build.
   Its TextEdit attempt still inserted nothing: the hardware Space state was true
   while the downstream session state was false. The event tap consumes Space;
   the hold check now uses the upstream HID state. Hardware retesting is required.
+- A subsequent `613cedb` smoke test observed recording start, confirming the
+  hold-check fix. Cancellation was not verified: the driver checked the status
+  after the transient HUD could disappear. It now observes cancellation during
+  playback. No microphone acceptance is inferred from this closed-lid attempt.
+- This Mac currently reports a closed lid and its built-in microphone selected.
+  Apple silicon laptops disconnect that microphone with the lid closed. The
+  owner has been asked to open the lid or select an external microphone.
+- Computer use refused Terminal.app access for safety reasons. An isolated
+  OpenCode 1.18.31 workspace is prepared, and `Tests/Manual` provides a reproducible
+  launcher; the owner must perform the Terminal interaction. Do not substitute
+  another automation API for the denied computer-use route.
 - Unsigned rebuilt apps require fresh OS grants. Computer use cannot access the
   permission-alert app. Existing keyboard grants may show enabled yet refer to
   an obsolete signature; reset only LocalFlow's affected grant and approve the

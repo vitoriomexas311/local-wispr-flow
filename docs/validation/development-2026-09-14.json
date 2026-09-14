@@ -137,6 +137,90 @@
           "wordErrors": 12
         }
       ]
+    },
+    {
+      "sourceCommit": "613cedbb1629d1c67d2ad7eaf101ef996f0a9b79",
+      "localReport": "utterance-sixty-1.json",
+      "input": "injected-public-audio",
+      "measurements": [
+        {
+          "accumulatedSegments": 86,
+          "audioEnd": 45.00027210884353,
+          "audioStart": 0,
+          "kind": "recognition-window",
+          "lastWordEnd": 43.98,
+          "segments": 86
+        },
+        {
+          "accumulatedSegments": 117,
+          "audioEnd": 57.8243537414966,
+          "audioStart": 43.97859410430839,
+          "kind": "recognition-window",
+          "lastWordEnd": 57.95859410430839,
+          "segments": 31
+        },
+        {
+          "elapsedSeconds": 58.12969454168342,
+          "expectedWords": 156,
+          "kind": "injected-audio-real-apple-recognizer",
+          "recognizedWords": 140,
+          "status": "passed",
+          "wordErrorRate": 0.10256410256410256,
+          "wordErrors": 16
+        }
+      ]
+    },
+    {
+      "sourceCommit": "613cedbb1629d1c67d2ad7eaf101ef996f0a9b79",
+      "localReport": "utterance-ten-minute-1.json",
+      "input": "injected-public-audio",
+      "measurements": [
+        {
+          "accumulatedSegments": 87,
+          "audioEnd": 45.00027210884353,
+          "audioStart": 0,
+          "kind": "recognition-window",
+          "lastWordEnd": 43.98,
+          "segments": 87
+        },
+        {
+          "accumulatedSegments": 172,
+          "audioEnd": 88.97886621315193,
+          "audioStart": 43.97859410430839,
+          "kind": "recognition-window",
+          "lastWordEnd": 89.15859410430839,
+          "segments": 85
+        },
+        {
+          "reason": "recognitionFailed",
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "sourceCommit": "613cedbb1629d1c67d2ad7eaf101ef996f0a9b79",
+      "localReport": "textedit-cancel-closed-lid-1.json",
+      "input": "closed-lid-platform-smoke",
+      "measurements": [
+        {
+          "hardwareSpace": true,
+          "kind": "held-key-state",
+          "sessionSpace": false
+        },
+        {
+          "kind": "capture-start",
+          "microphoneStarted": true
+        },
+        {
+          "cancellationObserved": false,
+          "clipboardUnchanged": true,
+          "fieldUnchanged": true,
+          "kind": "real-microphone-cancellation",
+          "microphoneStarted": true,
+          "status": "failed",
+          "target": "com.apple.TextEdit"
+        }
+      ]
     }
   ]
 }
