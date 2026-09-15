@@ -26,6 +26,12 @@ a self-referential SHA. Top-level keys: `schema: 1`, `sourceCommit`, `archiveSHA
 `macOSVersion`, `architecture`, `inputDevice`, `outputDevice`, `testedAtUTC`,
 `applicationVersions` (TextEdit, Terminal, OpenCode, browser), and `cases`.
 
+Accuracy is a reported measurement, not a fixed numeric release cutoff. On
+September 14, 2026, the owner removed the diagnostic 15% word-error target as a
+blocker for the personal pilot. Preserve original probe reports and their stated
+criteria; do not relabel historical failures. This does not waive actual microphone,
+insertion, cancellation, duration, or offline verification.
+
 Before release:
 
 1. Run `python3 scripts/verify-release.py artifacts/acceptance.json dist/LocalFlow-ARCH-draft.zip`.
