@@ -27,6 +27,10 @@ to commit `927cfce34f31707e17f2bff35c349632fb9e2c3a` (v1.9.4). Source archive SH
 `41b664fee09e79176ac277b5237debec34f8d74af3c7d71f333f1ec67989ecde`.
 The build uses CMake 3.20+ and Apple's C/C++ toolchain. No runtime compiler, Python,
 package manager, remote inference endpoint, or model account is required.
+The committed `Native/Whisper/hardening.patch` modifies this pinned source to
+disable dynamic backend loading, widen intermediate arithmetic, and correct
+null-checked allocation behavior. The build directory includes the patch SHA-256;
+this is a patched dependency, not an unmodified upstream binary.
 
 Optional model: OpenAI Whisper tiny.en, Q5_1 conversion distributed by the
 whisper.cpp maintainer (MIT). Revision

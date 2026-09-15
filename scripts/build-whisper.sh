@@ -13,8 +13,16 @@ if [[ ! -f "$archive" ]]; then
 fi
 actual="$(shasum -a 256 "$archive" | awk '{print $1}')"
 [[ "$actual" == "$checksum" ]] || { printf 'Whisper source checksum mismatch.\n' >&2; exit 1; }
-source_dir="$vendor/whisper.cpp-$revision"
-if [[ ! -d "$source_dir" ]]; then tar -xzf "$archive" -C "$vendor"; fi
+patch_file="$repo_root/Native/Whisper/hardening.patch"
+patch_hash="$(shasum -a 256 "$patch_file" | awk '{print $1}')"
+source_parent="$vendor/hardened-$patch_hash"
+source_dir="$source_parent/whisper.cpp-$revision"
+if [[ ! -f "$source_parent/.ready" ]]; then
+    mkdir -p "$source_parent"
+    tar -xzf "$archive" -C "$source_parent"
+    patch --batch --forward -d "$source_dir" -p1 < "$patch_file"
+    touch "$source_parent/.ready"
+fi
 cmake_bin="${CMAKE:-cmake}"
 if ! command -v "$cmake_bin" >/dev/null && [[ -x "$repo_root/.build/tools/cmake-env/bin/cmake" ]]; then
     cmake_bin="$repo_root/.build/tools/cmake-env/bin/cmake"
