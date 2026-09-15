@@ -159,7 +159,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
     }
-    private func allowInputMonitoring() { _ = CGRequestListenEventAccess() }
+    private func allowInputMonitoring() {
+        _ = CGRequestListenEventAccess()
+        // The permission request may not reopen Settings after a previous decision.
+        // Always navigate explicitly when the owner presses Allow.
+        guard let settings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"),
+              NSWorkspace.shared.open(settings) else {
+            model.message = "Open System Settings → Privacy & Security → Input Monitoring and enable LocalFlow."
+            return
+        }
+        model.message = "Enable LocalFlow in Input Monitoring. Quit and reopen LocalFlow if macOS asks."
+    }
     func applicationWillTerminate(_ notification: Notification) {
         recorder.stop()
         controller.stop()
