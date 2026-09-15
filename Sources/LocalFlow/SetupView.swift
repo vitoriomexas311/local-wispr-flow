@@ -35,7 +35,7 @@ struct FlowButton: ButtonStyle {
             .background(primary ? SetupView.coral : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(SetupView.ink.opacity(primary ? 0 : 0.16)))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .modifier(PressFeedback(pressed: configuration.isPressed))
     }
 }
 
@@ -96,7 +96,7 @@ struct SetupView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Self.ink.opacity(0.16)))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressButton())
                 .accessibilityLabel("Choose model")
                 .accessibilityValue(model.engine.title)
                 .disabled(!model.idle || model.busy)
@@ -194,7 +194,32 @@ private struct ModelOptionStyle: ButtonStyle {
             label
                 .background(SetupView.ink.opacity(pressed ? 0.12 : hovered ? 0.07 : selected ? 0.04 : 0))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .modifier(PressFeedback(pressed: pressed, depth: 1))
                 .onHover { hovered = $0 }
         }
+    }
+}
+
+private struct PressButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.modifier(PressFeedback(pressed: configuration.isPressed))
+    }
+}
+
+private struct PressFeedback: ViewModifier {
+    let pressed: Bool
+    var depth: CGFloat = 2
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var enabled
+
+    func body(content: Content) -> some View {
+        content
+            .brightness(pressed && enabled ? -0.035 : 0)
+            .shadow(color: SetupView.ink.opacity(enabled ? 0.14 : 0.04),
+                    radius: pressed ? 0 : 0.5, y: pressed ? 0 : depth)
+            .offset(y: pressed && !reduceMotion ? depth : 0)
+            .scaleEffect(pressed && !reduceMotion ? 0.985 : 1)
+            .opacity(enabled ? 1 : 0.5)
+            .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.75), value: pressed)
     }
 }
