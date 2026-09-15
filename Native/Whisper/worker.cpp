@@ -69,12 +69,20 @@ int main(int argc, char **argv) {
     if (status != 0) { whisper_free(context); return 5; }
     std::cout << '[';
     int segments = whisper_full_n_segments(context);
+    int emitted = 0;
+    const double duration = double(frames) / 16000.0;
     for (int i = 0; i < segments; ++i) {
-        if (i) std::cout << ',';
+        const char *text = whisper_full_get_segment_text(context, i);
+        const double start = double(whisper_full_get_segment_t0(context, i)) / 100.0;
+        // Whisper pads short input; the final token's end can extend into that
+        // padding. Keep real words and constrain ownership to captured audio.
+        if (!text || !*text || start < 0 || start >= duration) continue;
+        const double end = std::max(start, std::min(duration,
+            double(whisper_full_get_segment_t1(context, i)) / 100.0));
+        if (emitted++) std::cout << ',';
         std::cout << "{\"text\":";
-        json_string(whisper_full_get_segment_text(context, i));
-        std::cout << ",\"start\":" << double(whisper_full_get_segment_t0(context, i)) / 100.0
-                  << ",\"end\":" << double(whisper_full_get_segment_t1(context, i)) / 100.0 << '}';
+        json_string(text);
+        std::cout << ",\"start\":" << start << ",\"end\":" << end << '}';
     }
     std::cout << "]\n";
     whisper_free(context);

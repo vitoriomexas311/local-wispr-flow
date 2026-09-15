@@ -10,7 +10,7 @@ import time
 import wave
 
 worker, model, fixture = map(pathlib.Path, sys.argv[1:])
-command = ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network*)', str(worker.resolve()), str(model.resolve())]
+command = ['/usr/bin/sandbox-exec', '-p', '(version 1)(allow default)(deny network*)(deny file-write*)', str(worker.resolve()), str(model.resolve())]
 
 def run(payload):
     return subprocess.run(command, input=payload, capture_output=True, timeout=30)
@@ -33,4 +33,5 @@ assert result.returncode == 0, 'Real local inference failed'
 segments = json.loads(result.stdout)
 assert segments and all(isinstance(s['text'], str) and math.isfinite(s['start']) and s['end'] >= s['start'] for s in segments)
 assert any(s['text'].strip() for s in segments), 'Speech produced empty text'
+assert all(s['end'] <= len(samples) / 16000 + 0.0001 for s in segments), 'Timestamp extends into model padding'
 print(json.dumps({'kind':'whisper-native-injected-audio', 'network':'denied-for-worker', 'segments':len(segments), 'elapsedSeconds':elapsed, 'status':'passed'}))
