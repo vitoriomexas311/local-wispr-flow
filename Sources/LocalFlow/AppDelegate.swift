@@ -13,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let controller = DictationController()
     private let indicator = RecordingIndicator()
     private var hotkeyPicker: NSPopUpButton?
+    private var enginePicker: NSPopUpButton?
+    private var modelButtons: [NSButton] = []
+    private var provisioning = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -43,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.indicator.show(message, active: active)
         }
         controller.start()
-        if Permissions.snapshot().blockingIssue != nil || !UserDefaults.standard.bool(forKey: "hasOpened") {
+        if !controller.isReady || !UserDefaults.standard.bool(forKey: "hasOpened") {
             showSetup()
             UserDefaults.standard.set(true, forKey: "hasOpened")
         }
@@ -54,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showSetup() {
         if setupWindow == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 540),
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 690),
                                   styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             window.title = "LocalFlow Setup"
             window.isReleasedWhenClosed = false
@@ -67,9 +70,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             title.font = .systemFont(ofSize: 25, weight: .semibold)
             stack.addArrangedSubview(title)
             let description = NSTextField(wrappingLabelWithString:
-                "LocalFlow uses Apple's on-device speech engine. It refuses cloud recognition. " +
-                "Prepare speech assets before offline use. This is an unnotarized development pilot.")
+                "Choose Apple on-device recognition or download Whisper Tiny English once. " +
+                "Both transcribe on this Mac. No cloud recognition. This is an unsigned pilot.")
             stack.addArrangedSubview(description)
+            let engines = NSPopUpButton()
+            engines.addItems(withTitles: RecognitionEngine.allCases.map(\.title))
+            engines.selectItem(at: RecognitionEngine.allCases.firstIndex(of: controller.engine) ?? 0)
+            engines.target = self
+            engines.action = #selector(changeEngine)
+            engines.setAccessibilityLabel("Speech engine")
+            stack.addArrangedSubview(engines)
+            enginePicker = engines
+            let download = NSButton(title: "Download Whisper Tiny · 32 MB", target: self, action: #selector(downloadModel))
+            let importButton = NSButton(title: "Import model file offline…", target: self, action: #selector(importModel))
+            modelButtons = [download, importButton]
+            let modelRow = NSStackView(views: modelButtons)
+            modelRow.spacing = 12
+            stack.addArrangedSubview(modelRow)
             let readiness = NSTextField(wrappingLabelWithString: "Checking readiness…")
             readiness.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             stack.addArrangedSubview(readiness)
@@ -79,10 +96,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stack.addArrangedSubview(status)
             statusLabel = status
             let buttons: [(String, Selector)] = [
-                ("1. Prepare Speech", #selector(prepareSpeech)),
-                ("2. Allow Microphone", #selector(allowMicrophone)),
-                ("3. Allow Accessibility", #selector(allowAccessibility)),
-                ("4. Allow Input Monitoring", #selector(allowInputMonitoring))
+                ("Prepare Apple Speech (Apple engine only)", #selector(prepareSpeech)),
+                ("Allow Microphone", #selector(allowMicrophone)),
+                ("Allow Accessibility", #selector(allowAccessibility)),
+                ("Allow Input Monitoring", #selector(allowInputMonitoring))
             ]
             for (title, action) in buttons {
                 stack.addArrangedSubview(NSButton(title: title, target: self, action: action))
@@ -122,12 +139,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func refreshReadiness() {
         let readiness = Permissions.snapshot()
-        readinessLabel?.stringValue = "Speech: \(readiness.speechAuthorized ? "allowed" : "permission needed") · " +
-            "Local English assets: \(readiness.supportsOnDevice ? "available" : "missing")\n" +
+        let engineStatus: String
+        if controller.engine == .apple {
+            engineStatus = "Apple Speech: \(readiness.speechAuthorized ? "allowed" : "permission needed") · " +
+                "Local English assets: \(readiness.supportsOnDevice ? "available" : "missing")"
+        } else {
+            engineStatus = "Whisper model: \(TinyModel.installed ? "verified and ready offline" : "download or import needed") · " +
+                "Runtime: \(TinyModel.helperAvailable ? "available" : "missing")"
+        }
+        readinessLabel?.stringValue = engineStatus + "\n" +
             "Microphone: \(readiness.microphoneAuthorized ? "allowed" : "permission needed") · " +
             "Accessibility: \(readiness.accessibilityTrusted ? "allowed" : "permission needed")\n" +
             "Input monitoring: \(readiness.inputMonitoringGranted ? "allowed" : "permission needed")"
         hotkeyPicker?.isEnabled = controller.machine.phase == .idle
+        enginePicker?.isEnabled = controller.machine.phase == .idle && !provisioning
+        for button in modelButtons { button.isEnabled = controller.machine.phase == .idle && !provisioning }
+    }
+
+    @objc private func changeEngine() {
+        guard let index = enginePicker?.indexOfSelectedItem,
+              RecognitionEngine.allCases.indices.contains(index) else { return }
+        controller.engine = RecognitionEngine.allCases[index]
+        refreshReadiness()
+    }
+
+    @objc private func downloadModel() { provisionModel(nil) }
+
+    @objc private func importModel() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Choose ggml-tiny.en-q5_1.bin. Its checksum will be verified before installation."
+        if panel.runModal() == .OK, let url = panel.url { provisionModel(url) }
+    }
+
+    private func provisionModel(_ source: URL?) {
+        guard !provisioning, controller.machine.phase == .idle else { return }
+        provisioning = true
+        statusLabel?.stringValue = source == nil ? "Downloading 32 MB model…" : "Verifying model…"
+        refreshReadiness()
+        TinyModel.provision(importing: source) { [weak self] succeeded in
+            guard let self else { return }
+            self.provisioning = false
+            self.statusLabel?.stringValue = succeeded ? "Whisper Tiny ready. Select it above to use it." :
+                "Model installation failed. Retry the download or import the verified model file."
+            self.refreshReadiness()
+        }
     }
 
     @objc private func prepareSpeech() {

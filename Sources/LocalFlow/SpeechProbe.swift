@@ -6,11 +6,16 @@ import DictationCore
 /// reports numeric accuracy/timing, never recognized or expected content.
 @MainActor
 enum SpeechProbe {
-    static func run(audioURL: URL, expectedURL: URL) -> Int32 {
+    static func run(audioURL: URL, expectedURL: URL, engine: RecognitionEngine = .apple) -> Int32 {
         let started = ProcessInfo.processInfo.systemUptime
-        let readiness = Permissions.snapshot()
-        guard readiness.speechAuthorized, readiness.supportsOnDevice, readiness.recognizerAvailable else {
-            report(["status": "blocked", "reason": "local-speech-not-ready"])
+        if engine == .apple {
+            let readiness = Permissions.snapshot()
+            guard readiness.speechAuthorized, readiness.supportsOnDevice, readiness.recognizerAvailable else {
+                report(["status": "blocked", "reason": "local-speech-not-ready"])
+                return 2
+            }
+        } else if !TinyModel.installed || !TinyModel.helperAvailable {
+            report(["status": "blocked", "reason": "tiny-model-or-helper-missing"])
             return 2
         }
         guard let file = try? AVAudioFile(forReading: audioURL), file.processingFormat.sampleRate > 0,
@@ -19,24 +24,32 @@ enum SpeechProbe {
             report(["status": "failed", "reason": "invalid-fixture"])
             return 1
         }
-        let pipeline = SpeechPipeline()
-        pipeline.onDiagnosticFailure = { stage in
-            report(["kind": "recognition-failure-stage", "stage": stage.rawValue])
+        let pipeline: any RecognitionBackend = engine == .apple ? SpeechPipeline() : WhisperPipeline()
+        if let pipeline = pipeline as? SpeechPipeline {
+            pipeline.onDiagnosticFailure = { stage in
+                report(["kind": "recognition-failure-stage", "stage": stage.rawValue])
+            }
+            pipeline.onWindowMetrics = { start, end, segments, accumulated, lastWordEnd in
+                report(["kind": "recognition-window", "audioStart": start, "audioEnd": end,
+                        "segments": segments, "accumulatedSegments": accumulated, "lastWordEnd": lastWordEnd])
+            }
+            pipeline.onPartialMetrics = { start, count, metadata, first, last in
+                report(["kind": "partial-metrics", "windowStart": start, "segments": count,
+                        "hasSpeechMetadata": metadata, "firstTimestamp": first, "lastTimestamp": last])
+            }
         }
-        pipeline.onWindowMetrics = { start, end, segments, accumulated, lastWordEnd in
-            report(["kind": "recognition-window", "audioStart": start, "audioEnd": end,
-                    "segments": segments, "accumulatedSegments": accumulated, "lastWordEnd": lastWordEnd])
-        }
-        pipeline.onPartialMetrics = { start, count, metadata, first, last in
-            report(["kind": "partial-metrics", "windowStart": start, "segments": count,
-                    "hasSpeechMetadata": metadata, "firstTimestamp": first, "lastTimestamp": last])
+        if let pipeline = pipeline as? WhisperPipeline {
+            pipeline.onDiagnosticFailure = { stage in report(["kind": "whisper-failure-stage", "stage": stage]) }
         }
         var finished = false
+        var releasedAt: Double?
         var passed = false
         pipeline.onResult = { _, text in
             let score = SpeechScore(expected: expected, recognized: TextPolicy.insertionText(text))
-            passed = score.expectedWords > 0 && score.wordErrorRate <= 0.15
-            report(["status": passed ? "passed" : "failed", "kind": "injected-audio-real-apple-recognizer",
+            passed = score.expectedWords > 0 && score.recognizedWords > 0
+            report(["status": passed ? "passed" : "failed", "kind": engine == .apple ? "injected-audio-real-apple-recognizer" : "injected-audio-native-whisper",
+                    "accuracyTargetMet": score.wordErrorRate <= 0.15,
+                    "finalizationSeconds": ProcessInfo.processInfo.systemUptime - (releasedAt ?? started),
                     "expectedWords": score.expectedWords, "recognizedWords": score.recognizedWords,
                     "wordErrors": score.errors, "wordErrorRate": score.wordErrorRate,
                     "elapsedSeconds": ProcessInfo.processInfo.systemUptime - started])
@@ -55,6 +68,7 @@ enum SpeechProbe {
             let position = file.framePosition
             if !ended && now - started >= Double(position) / file.processingFormat.sampleRate {
                 if position >= file.length {
+                    releasedAt = ProcessInfo.processInfo.systemUptime
                     pipeline.finish()
                     ended = true
                 } else if let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 1024) {

@@ -6,7 +6,8 @@ final class DictationController {
     var onStatus: ((String, Bool) -> Void)?
     private(set) var machine = SessionMachine()
     private let audio = AudioCapture()
-    private let speech = SpeechPipeline()
+    private var speech: any RecognitionBackend = SpeechPipeline()
+    private var engineChoice: RecognitionEngine = .apple
     private let monitor = HotkeyMonitor()
     private var destination: Destination?
     private var capturedRevision: UInt64 = 0
@@ -15,6 +16,34 @@ final class DictationController {
     private var observers: [NSObjectProtocol] = []
     private var lastReadinessCheck: Double = 0
     private var readiness = Permissions.snapshot()
+
+    var engine: RecognitionEngine {
+        get { engineChoice }
+        set {
+            guard machine.phase == .idle else { return }
+            speech.cancel()
+            engineChoice = newValue
+            speech = newValue == .apple ? SpeechPipeline() : WhisperPipeline()
+            configureSpeech()
+            UserDefaults.standard.set(newValue.rawValue, forKey: "recognitionEngine")
+        }
+    }
+
+    var isReady: Bool {
+        engine.isReady(readiness, modelInstalled: engine == .whisperTiny && TinyModel.installed,
+                       helperAvailable: engine == .whisperTiny && TinyModel.helperAvailable)
+    }
+
+    private func configureSpeech() {
+        speech.onResult = { [weak self] generation, text in
+            guard let self else { return }
+            self.apply(self.machine.recognized(generation: generation, text: text, now: self.now))
+        }
+        speech.onFailure = { [weak self] generation, reason in
+            guard let self else { return }
+            self.apply(self.machine.recognitionFailed(generation: generation, reason: reason))
+        }
+    }
 
     var hotkey: HotkeyChoice {
         get { monitor.policy.choice }
@@ -40,14 +69,8 @@ final class DictationController {
                 self.handle(action)
             }
         }
-        speech.onResult = { [weak self] generation, text in
-            guard let self else { return }
-            self.apply(self.machine.recognized(generation: generation, text: text, now: self.now))
-        }
-        speech.onFailure = { [weak self] generation, reason in
-            guard let self else { return }
-            self.apply(self.machine.recognitionFailed(generation: generation, reason: reason))
-        }
+        engine = UserDefaults.standard.string(forKey: "recognitionEngine")
+            .flatMap(RecognitionEngine.init(rawValue:)) ?? .apple
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -69,7 +92,7 @@ final class DictationController {
             readiness = Permissions.snapshot()
             destination = DestinationAccess.capture()
             capturedRevision = monitor.activityRevision
-            apply(machine.begin(now: now, ready: readiness.blockingIssue == nil,
+            apply(machine.begin(now: now, ready: isReady,
                                 targetAllowed: destination != nil))
         case .release: apply(machine.release(now: now))
         case .cancel: cancel()
@@ -83,7 +106,7 @@ final class DictationController {
         if now - lastReadinessCheck >= 1 {
             readiness = Permissions.snapshot()
             lastReadinessCheck = now
-            if readiness.blockingIssue == nil && !monitor.isInstalled {
+            if isReady && !monitor.isInstalled {
                 if !monitor.install() { onStatus?("Allow Accessibility and Input Monitoring", false) }
             }
         }
@@ -97,7 +120,7 @@ final class DictationController {
         speech.checkTimeout(now: now)
         let valid = targetIsCurrent(checkSelection: machine.phase != .inserting)
         apply(machine.tick(now: now, hotkeyHeld: monitor.isHeld, modifiersDown: monitor.modifiersDown,
-                           targetValid: valid, permissionsValid: readiness.blockingIssue == nil))
+                           targetValid: valid, permissionsValid: isReady))
         switch machine.phase {
         case .recording:
             let elapsed = Int(max(0, now - machine.startedAt))
