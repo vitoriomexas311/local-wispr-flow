@@ -19,9 +19,12 @@ bash "$package/uninstall.sh"
 test ! -e "$LOCALFLOW_APPLICATIONS_DIR/LocalFlow.app"
 bash "$package/uninstall.sh"
 # A modified ZIP must fail before writing an app.
+cp "$package/SETUP.txt" "$work/SETUP.original"
 printf 'tampered\n' >> "$package/SETUP.txt"
 if bash "$package/install.sh"; then printf 'Tampered package accepted\n' >&2; exit 1; fi
 test ! -e "$LOCALFLOW_APPLICATIONS_DIR/LocalFlow.app"
+# Restore the valid package so checksum rejection cannot mask a missing symlink guard.
+cp "$work/SETUP.original" "$package/SETUP.txt"
 # Installation paths must not redirect writes through a symlink.
 ln -s "$work/Trash" "$LOCALFLOW_APPLICATIONS_DIR/LocalFlow.app"
 if bash "$package/install.sh"; then printf 'Symlink accepted\n' >&2; exit 1; fi
