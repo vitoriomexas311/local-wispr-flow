@@ -1,7 +1,33 @@
 # Implementation status
 
-The tiny local engine is implemented and downloaded. No public release has passed
-all real-device acceptance gates yet.
+## v0.1.0 release, September 15, 2026
+
+[The public release](https://github.com/vitoriomexas311/local-wispr-flow/releases/tag/v0.1.0)
+is built from `316b316368dd047cd8c18f3be2c9aecc35aa0e49`. Its universal ZIP bundles
+Whisper Tiny English and supports setup without networking. The owner explicitly
+authorized publishing without additional physical tests and reports microphone
+functionality works. This supersedes the original all-hardware-gates release
+requirement for this release only; the strict verifier remains available for
+future independently measured hardware acceptance.
+
+Exact ZIP SHA-256: `5654c65ebee24c6ee541b62e6ccf68e2c7fa60aedfdf285b03bf6654bb86a353`.
+CI and Security passed for that source commit. Exact-ZIP offline setup/reinstall,
+installer lifecycle, rollback, tamper and symlink checks passed. The bundled
+native worker recognized the public JFK fixture with networking and file writes
+denied. A whole-app nested-sandbox experiment could not run because macOS rejects
+nested sandbox initialization; it is not counted as passing.
+
+Earlier source `8b3a72b` passed real microphone-to-TextEdit insertion on a public
+22-word fixture, including a custom shortcut: zero word errors and unchanged
+clipboard. Separate file-injection comparisons at `f3aec69` (three trials) gave
+median finalization of 0.083 seconds / one word error for Apple and 0.425 seconds /
+zero errors for Whisper. These narrow results do not establish broad accuracy.
+
+No new physical microphone, cross-app, ten-minute hold or whole-device offline
+tests were performed for the release. The machine is not made air-gapped by the
+app. Release `VALIDATION.json` records these limits; no CUI certification is claimed.
+
+The sections below retain historical implementation and test notes.
 
 ## Implemented
 
@@ -56,9 +82,8 @@ acceptance**. Accuracy is reported, not a fixed numeric release gate.
 
 ## Remaining acceptance
 
-The owner opened the lid for the next microphone acceptance run. macOS permission
-grants are still required for the updated unsigned app; fixture tests cannot
-substitute for those hardware checks.
+The owner waived further physical testing for v0.1.0. Original uncompleted
+hardware cases remain unverified; fixture tests cannot substitute for them.
 Computer use refused Terminal.app, so Terminal/OpenCode testing must be performed
 by the owner; the isolated launcher is in `Tests/Manual`.
 
