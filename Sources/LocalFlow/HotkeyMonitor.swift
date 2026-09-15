@@ -9,6 +9,7 @@ enum LocalEvent {
         if flags.contains(.maskAlternate) { result.insert(.option) }
         if flags.contains(.maskShift) { result.insert(.shift) }
         if flags.contains(.maskCommand) { result.insert(.command) }
+        if flags.contains(.maskSecondaryFn) { result.insert(.function) }
         return result
     }
 }
@@ -17,6 +18,7 @@ enum LocalEvent {
 final class HotkeyMonitor {
     var onAction: ((HotkeyAction) -> Void)?
     var sessionActive = false
+    var suspended = false
     var policy = HotkeyPolicy()
     private(set) var activityRevision: UInt64 = 0
     private var tap: CFMachPort?
@@ -24,7 +26,13 @@ final class HotkeyMonitor {
     var isInstalled: Bool { tap != nil }
     // The session tap consumes the trigger, so the downstream combined-session table
     // never sees its key-down. The HID table still tracks release/lost-release.
-    var isHeld: Bool { policy.isHeld && CGEventSource.keyState(.hidSystemState, key: policy.choice.keyCode) }
+    var isHeld: Bool {
+        guard policy.isHeld else { return false }
+        if policy.choice.isModifierOnly {
+            return LocalEvent.modifiers(CGEventSource.flagsState(.hidSystemState)) == policy.choice.modifiers
+        }
+        return CGEventSource.keyState(.hidSystemState, key: policy.choice.keyCode)
+    }
     var modifiersDown: Bool { !LocalEvent.modifiers(CGEventSource.flagsState(.combinedSessionState)).isEmpty }
 
     @discardableResult
@@ -49,6 +57,7 @@ final class HotkeyMonitor {
     }
 
     private func receive(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+        if suspended { return Unmanaged.passUnretained(event) }
         let kind: InputKind
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput: kind = .interrupted
