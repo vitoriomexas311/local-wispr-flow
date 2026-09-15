@@ -23,11 +23,13 @@ if [[ "${1:-}" == --rollback ]]; then
 else
     [[ $# -eq 0 ]] || fail 'Usage: bash install.sh [--rollback]'
     cd "$package_root"
-    [[ "$(cat ARCHITECTURE)" == "$(uname -m)" ]] || fail 'Download the ZIP matching this Mac architecture.'
+    [[ "$(cat ARCHITECTURE)" == "$(uname -m)" || "$(cat ARCHITECTURE)" == universal ]] || fail 'Download the ZIP matching this Mac architecture.'
     /usr/bin/shasum -a 256 -c CHECKSUMS.sha256 || fail 'Package checksum verification failed.'
     source_app="$package_root/LocalFlow.app"
 fi
 [[ -d "$source_app" && ! -L "$source_app" && "$(identity "$source_app")" == "$bundle_id" ]] || fail 'Not a LocalFlow app bundle.'
+/usr/bin/lipo "$source_app/Contents/MacOS/LocalFlow" -verify_arch "$(uname -m)" || fail 'App binary does not support this Mac.'
+/usr/bin/lipo "$source_app/Contents/Helpers/localflow-whisper" -verify_arch "$(uname -m)" || fail 'Whisper binary does not support this Mac.'
 /usr/bin/codesign --verify --strict "$source_app" || fail 'App integrity verification failed.'
 if [[ -e "$target" ]]; then
     [[ -d "$target" && "$(identity "$target")" == "$bundle_id" ]] || fail 'An unrelated LocalFlow.app already exists; installation refused.'

@@ -1,31 +1,28 @@
-LocalFlow — unsigned pilot, macOS 14+, US English
+LocalFlow — macOS 14+, unsigned pilot
 
-1. Extract this ZIP. Run: bash ./install.sh
-2. Open ~/Applications/LocalFlow.app in Finder. Approve through macOS.
-3. Select Whisper Tiny English. Click Download Whisper Tiny (32 MB), or import
-   ggml-tiny.en-q5_1.bin if offline. Alternatively run: bash ./download-model.sh
-4. Allow Microphone, Accessibility, and Input Monitoring in Setup. Apple Speech
-   permission/assets are needed only if you choose the Apple engine.
-5. Focus a text field. Hold Control–Option–Space, speak, release all keys.
+1. Extract the universal offline ZIP.
+2. Run: bash ./setup.sh
+3. Approve LocalFlow in macOS and allow Microphone, Accessibility, Input Monitoring.
+4. Focus a text field. Hold the shortcut shown in LocalFlow, speak, and release.
 
-Escape cancels. Never submits. No clipboard use. Ten minutes maximum.
-The destination app can store or transmit the inserted text.
+Change the shortcut in LocalFlow. Escape cancels. Ten minutes maximum.
+The universal offline ZIP includes Whisper Tiny English (32 MB) for Apple Silicon
+and Intel. Setup needs no network, compiler, package manager, account, or sudo.
+An app-only ZIP downloads the model once instead. Force offline import with:
+  bash ./setup.sh --offline /path/to/ggml-tiny.en-q5_1.bin
 
-The installer is offline and requires no compiler, package manager, or sudo.
-It does not strip quarantine or disable Gatekeeper. Unsigned updates can
-require fresh macOS permission grants. Quit LocalFlow before an update.
+Keep the lid open or select an external microphone in System Settings → Sound.
 
+Quit LocalFlow before updating. The installer preserves the previous app.
 Rollback: bash ./install.sh --rollback
 Uninstall: bash ./uninstall.sh
-Previous apps remain in ~/Applications/LocalFlow Backups.
+The model remains in ~/Library/Application Support/LocalFlow/Models.
 
-Source, privacy boundary, and validation: github.com/vitoriomexas311/local-wispr-flow
-No company-wide CUI compliance certification is implied.
+Unsigned/unnotarized: macOS may require Privacy & Security → Open Anyway.
+Setup never disables Gatekeeper or strips quarantine. Updates can require fresh
+permission grants. No public release is validated until its exact-artifact
+microphone, cross-app and whole-device offline acceptance is recorded.
 
-Whisper model provisioning is the only optional network download. Dictation
-never sends audio/text out. For company offline setup, transfer the model file
-and run: bash ./download-model.sh /path/to/ggml-tiny.en-q5_1.bin
-The SHA-256 is checked before installation. The model stays in
-~/Library/Application Support/LocalFlow/Models across app upgrades/uninstall.
-Remove that directory yourself if you also want to remove the downloaded model.
-With the lid closed, use an external microphone: macOS disconnects the built-in mic.
+LocalFlow does not save audio/transcripts, use the clipboard, or send dictations
+out. Destination apps can store or transmit inserted text. No CUI certification.
+Source: github.com/vitoriomexas311/local-wispr-flow

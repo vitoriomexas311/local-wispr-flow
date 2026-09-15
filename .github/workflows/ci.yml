@@ -45,12 +45,13 @@ jobs:
           bash Tests/Installer/test-install.sh
           ".build/app-$(uname -m)/LocalFlow.app/Contents/MacOS/LocalFlow" --verify-whisper "$RUNNER_TEMP/short.wav" Tests/Fixtures/short.txt
           ".build/app-$(uname -m)/LocalFlow.app/Contents/MacOS/LocalFlow" --verify-whisper-cancellation
+          human_fixture=(.build/vendor/hardened-*/whisper.cpp-*/bindings/go/samples/jfk.wav)
+          ".build/app-$(uname -m)/LocalFlow.app/Contents/MacOS/LocalFlow" --verify-whisper "${human_fixture[0]}" Tests/Fixtures/jfk.txt
       - name: Validate both architecture builds
         if: matrix.os == 'macos-15'
         run: |
-          for architecture in arm64 x86_64; do
-            ARCHITECTURE="$architecture" scripts/build-app.sh
-            lipo ".build/app-$architecture/LocalFlow.app/Contents/MacOS/LocalFlow" -verify_arch "$architecture"
-            ARCHITECTURE="$architecture" scripts/package.sh
-          done
+          scripts/build-universal.sh
+          ARCHITECTURE=universal INCLUDE_MODEL=1 scripts/package.sh
+          ARCHITECTURE=universal bash Tests/Installer/test-install.sh
+          ARCHITECTURE=universal bash Tests/Installer/test-setup.sh
       # App archives remain local to the job until actual hardware acceptance.
