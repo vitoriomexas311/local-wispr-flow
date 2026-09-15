@@ -1,17 +1,15 @@
 # LocalFlow artwork
 
-The app icon uses the owner's supplied `localflow.jpg` photograph. It is a
-centered square crop with rounded corners, not a generated or retouched face.
-`LocalFlow.png` is the 1024-pixel master preview; `LocalFlow.icns` contains the
-macOS icon sizes. Exported PNGs retain only pixel and sRGB chunks.
+An original five-bar waveform mark replaces the former photo icon. The menu-bar
+version is a native template image, so it follows macOS light/dark contrast; red
+indicates recording or processing. The app icon uses cream bars on a coral gradient.
+No third-party image, font, photo, or brand asset is bundled.
 
-Conversion source is in `scripts/generate-icon.swift`. With a working macOS SDK:
+Regenerate the 1024px PNG and complete ICNS from vector drawing instructions:
 
 ```sh
-swiftc -sdk "$(xcrun --sdk macosx --show-sdk-path)" scripts/generate-icon.swift -o /tmp/localflow-icon
-/tmp/localflow-icon /path/to/localflow.jpg .build/icon
-iconutil -c icns .build/icon/LocalFlow.iconset -o .build/icon/LocalFlow.icns
+xcrun swiftc scripts/generate-icon.swift -o /tmp/localflow-icon
+/tmp/localflow-icon .build/artwork
+iconutil -c icns .build/artwork/LocalFlow.iconset -o Resources/LocalFlow.icns
+cp .build/artwork/LocalFlow.png Resources/LocalFlow.png
 ```
-
-The original photograph and its camera metadata are not required to build or
-install LocalFlow; the committed icon assets are used directly.
