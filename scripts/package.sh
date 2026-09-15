@@ -4,7 +4,9 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 architecture="${ARCHITECTURE:-$(uname -m)}"
 case "$architecture" in arm64|x86_64) ;; *) exit 2 ;; esac
-source_app="$repo_root/.build/app-$architecture/LocalFlow.app"
+variant="${LOCALFLOW_BUILD_VARIANT:-app}"
+case "$variant" in app|candidate-app) ;; *) exit 2 ;; esac
+source_app="$repo_root/.build/$variant-$architecture/LocalFlow.app"
 [[ -d "$source_app" ]] || { printf 'Build the app first.\n' >&2; exit 1; }
 mkdir -p dist
 stage="$(mktemp -d "$repo_root/dist/.package.XXXXXX")"
@@ -12,7 +14,7 @@ trap 'rm -rf "$stage"' EXIT
 payload="$stage/LocalFlow-$architecture"
 mkdir "$payload"
 ditto "$source_app" "$payload/LocalFlow.app"
-cp Distribution/install.sh Distribution/uninstall.sh Distribution/SETUP.txt LICENSE "$payload/"
+cp Distribution/install.sh Distribution/uninstall.sh Distribution/download-model.sh Distribution/WHISPER-RUNTIME-LICENSE.txt Distribution/WHISPER-MODEL-LICENSE.txt Distribution/SETUP.txt LICENSE "$payload/"
 cp docs/DEPENDENCIES.md "$payload/DEPENDENCIES.md"
 printf '%s\n' "$architecture" > "$payload/ARCHITECTURE"
 /usr/libexec/PlistBuddy -c 'Print :LocalFlowSourceCommit' "$source_app/Contents/Info.plist" > "$payload/SOURCE_COMMIT"

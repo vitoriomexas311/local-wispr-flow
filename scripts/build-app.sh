@@ -8,12 +8,18 @@ case "$configuration" in debug|release) ;; *) exit 2 ;; esac
 case "$architecture" in arm64|x86_64) ;; *) exit 2 ;; esac
 scripts/local-swift.sh build --product LocalFlow -c "$configuration" --arch "$architecture"
 binary_dir="$(scripts/local-swift.sh build -c "$configuration" --arch "$architecture" --show-bin-path)"
-bundle="$repo_root/.build/app-$architecture/LocalFlow.app"
-if /usr/bin/pgrep -x LocalFlow >/dev/null; then
+variant="${LOCALFLOW_BUILD_VARIANT:-app}"
+case "$variant" in app|candidate-app) ;; *) exit 2 ;; esac
+bundle="$repo_root/.build/$variant-$architecture/LocalFlow.app"
+if /usr/bin/pgrep -f "$bundle/Contents/MacOS/LocalFlow" >/dev/null; then
     printf 'Quit LocalFlow before replacing its signed development bundle.\n' >&2
     exit 1
 fi
-mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
+ARCHITECTURE="$architecture" scripts/build-whisper.sh
+mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources" "$bundle/Contents/Helpers"
+cp "$repo_root/.build/whisper-$architecture/localflow-whisper" "$bundle/Contents/Helpers/localflow-whisper"
+codesign --force --sign - --options runtime "$bundle/Contents/Helpers/localflow-whisper"
+cp Distribution/download-model.sh Distribution/WHISPER-RUNTIME-LICENSE.txt Distribution/WHISPER-MODEL-LICENSE.txt "$bundle/Contents/Resources/"
 cp "$binary_dir/LocalFlow" "$bundle/Contents/MacOS/LocalFlow"
 # The isolated mixed-CLT workaround also supports Swift Testing. Its development
 # framework search path must not be inherited by the distributed application.

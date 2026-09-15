@@ -34,6 +34,7 @@ jobs:
         run: |
           scripts/build-whisper.sh
           bash Distribution/download-model.sh
+          bash Tests/Whisper/test_model_install.sh "$HOME/Library/Application Support/LocalFlow/Models/ggml-tiny.en-q5_1.bin"
           say -v Samantha -f Tests/Fixtures/short.txt -o "$RUNNER_TEMP/short.aiff"
           afconvert -f WAVE -d LEI16@16000 -c 1 "$RUNNER_TEMP/short.aiff" "$RUNNER_TEMP/short.wav"
           python3 Tests/Whisper/test_worker.py ".build/whisper-$(uname -m)/localflow-whisper" "$HOME/Library/Application Support/LocalFlow/Models/ggml-tiny.en-q5_1.bin" "$RUNNER_TEMP/short.wav"
@@ -42,6 +43,8 @@ jobs:
           scripts/build-app.sh
           scripts/package.sh
           bash Tests/Installer/test-install.sh
+          ".build/app-$(uname -m)/LocalFlow.app/Contents/MacOS/LocalFlow" --verify-whisper "$RUNNER_TEMP/short.wav" Tests/Fixtures/short.txt
+          ".build/app-$(uname -m)/LocalFlow.app/Contents/MacOS/LocalFlow" --verify-whisper-cancellation
       - name: Validate both architecture builds
         if: matrix.os == 'macos-15'
         run: |
