@@ -109,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let readiness = Permissions.snapshot()
         model.engine = controller.engine
         model.shortcut = controller.hotkey.displayName
+        model.shortcutKeys = controller.hotkey.displayKeys
         model.modelReady = TinyModel.installed && TinyModel.helperAvailable
         model.microphone = readiness.microphoneAuthorized
         model.accessibility = readiness.accessibilityTrusted

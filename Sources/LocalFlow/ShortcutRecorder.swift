@@ -46,16 +46,18 @@ final class ShortcutRecorder {
 }
 
 extension HotkeyChoice {
-    @MainActor var displayName: String {
-        var symbols = ""
-        for (flag, label): (KeyModifiers, String) in [(.control,"⌃"),(.option,"⌥"),(.shift,"⇧"),(.command,"⌘"),(.function,"fn ")] {
-            if modifiers.contains(flag) { symbols += label }
+    @MainActor var displayName: String { displayKeys.joined() }
+
+    @MainActor var displayKeys: [String] {
+        var symbols: [String] = []
+        for (flag, label): (KeyModifiers, String) in [(.control,"⌃"),(.option,"⌥"),(.shift,"⇧"),(.command,"⌘"),(.function,"fn")] {
+            if modifiers.contains(flag) { symbols.append(label) }
         }
-        if isModifierOnly { return symbols.trimmingCharacters(in: .whitespaces) }
+        if isModifierOnly { return symbols }
         let special: [UInt16: String] = [36:"Return",48:"Tab",49:"Space",51:"Delete",53:"Esc",71:"Clear",76:"Enter",114:"Help",115:"Home",116:"Page Up",117:"Forward Delete",119:"End",121:"Page Down",123:"←",124:"→",125:"↓",126:"↑"]
-        if let name = special[keyCode] { return symbols + name }
+        if let name = special[keyCode] { return symbols + [name] }
         let functionKeys: [UInt16] = [122,120,99,118,96,97,98,100,101,109,103,111,105,107,113,106,64,79,80,90]
-        if let index = functionKeys.firstIndex(of: keyCode) { return symbols + "F\(index + 1)" }
+        if let index = functionKeys.firstIndex(of: keyCode) { return symbols + ["F\(index + 1)"] }
         // Translate the physical shortcut key using the active layout, without reading typed text.
         let input = TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue()
         if let pointer = TISGetInputSourceProperty(input, kTISPropertyUnicodeKeyLayoutData) {
@@ -68,10 +70,10 @@ extension HotkeyChoice {
                 let status = UCKeyTranslate(layout, keyCode, UInt16(kUCKeyActionDisplay), 0,
                     UInt32(LMGetKbdType()), OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, 8, &length, &characters)
                 if status == noErr, length > 0 {
-                    return symbols + String(utf16CodeUnits: characters, count: length).uppercased()
+                    return symbols + [String(utf16CodeUnits: characters, count: length).uppercased()]
                 }
             }
         }
-        return symbols + "Key \(keyCode)"
+        return symbols + ["Key \(keyCode)"]
     }
 }

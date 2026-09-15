@@ -5,6 +5,7 @@ import DictationCore
 final class SetupModel: ObservableObject {
     @Published var engine: RecognitionEngine = .whisperTiny
     @Published var shortcut = ""
+    @Published var shortcutKeys: [String] = []
     @Published var recordingShortcut = false
     @Published var shortcutHint = "A key with any modifiers, or modifiers on their own."
     @Published var modelReady = false
@@ -40,6 +41,7 @@ struct FlowButton: ButtonStyle {
 
 struct SetupView: View {
     @ObservedObject var model: SetupModel
+    @State private var choosingModel = false
     static let ink = Color(red: 0.12, green: 0.12, blue: 0.15)
     static let coral = Color(red: 0.91, green: 0.24, blue: 0.25)
 
@@ -53,9 +55,24 @@ struct SetupView: View {
             Divider()
             HStack {
                 Text("Shortcut").frame(width: 110, alignment: .leading)
-                Text(model.recordingShortcut ? "Press keys…" : model.shortcut)
-                    .font(.system(size: 16, weight: .medium, design: .monospaced))
+                if model.recordingShortcut {
+                    Text("Press keys…").foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 5) {
+                        ForEach(Array(model.shortcutKeys.enumerated()), id: \.offset) { _, key in
+                            Text(key)
+                                .font(.system(size: 14, weight: .medium))
+                                .padding(.horizontal, 9)
+                                .frame(minWidth: 30, minHeight: 32)
+                                .background(Color(white: 0.97))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Self.ink.opacity(0.18)))
+                                .shadow(color: Self.ink.opacity(0.1), radius: 0, y: 2)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Current shortcut: \(model.shortcut)")
+                }
                 Spacer()
                 Button(model.recordingShortcut ? "Cancel" : "Change") {
                     if model.recordingShortcut { model.cancelShortcut?() } else { model.recordShortcut?() }
@@ -66,11 +83,58 @@ struct SetupView: View {
                 Text(model.shortcutHint).font(.system(size: 11)).foregroundStyle(.secondary)
             }
             HStack {
-                Text("Engine").frame(width: 110, alignment: .leading)
-                Picker("Engine", selection: Binding(get: { model.engine }, set: { model.selectEngine?($0) })) {
-                    ForEach(RecognitionEngine.allCases, id: \.self) { engine in Text(engine.title).tag(engine) }
-                }.labelsHidden().disabled(!model.idle || model.busy)
-            }
+                Text("Model").frame(width: 110, alignment: .leading)
+                Button { choosingModel.toggle() } label: {
+                    HStack(spacing: 10) {
+                        Text(model.engine.title).fontWeight(.medium)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 11)
+                    .background(Color(white: 0.98))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Self.ink.opacity(0.16)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Choose model")
+                .accessibilityValue(model.engine.title)
+                .disabled(!model.idle || model.busy)
+                .overlay(alignment: .topLeading) {
+                    if choosingModel {
+                    VStack(spacing: 4) {
+                        ForEach(RecognitionEngine.allCases, id: \.self) { engine in
+                            Button {
+                                choosingModel = false
+                                model.selectEngine?(engine)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Text(engine.title)
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Self.coral)
+                                        .opacity(model.engine == engine ? 1 : 0)
+                                }
+                                .padding(12).contentShape(Rectangle())
+                            }
+                            .buttonStyle(ModelOptionStyle(selected: model.engine == engine))
+                            .accessibilityValue(model.engine == engine ? "Selected" : "")
+                            .disabled(!model.idle || model.busy)
+                        }
+                    }
+                    .padding(6).frame(maxWidth: .infinity)
+                    .foregroundStyle(Self.ink).background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Self.ink.opacity(0.16)))
+                    .shadow(color: Self.ink.opacity(0.12), radius: 12, y: 5)
+                    .offset(y: 44)
+                    .onExitCommand { choosingModel = false }
+                    }
+                }
+                .onChange(of: model.idle) { _, idle in if !idle { choosingModel = false } }
+                .onChange(of: model.busy) { _, busy in if busy { choosingModel = false } }
+            }.zIndex(1)
             if model.engine == .whisperTiny {
                 HStack(spacing: 12) {
                     Label(model.modelReady ? "Model installed" : "Model required · 32 MB", systemImage: model.modelReady ? "checkmark.circle.fill" : "arrow.down.circle")
@@ -112,5 +176,25 @@ struct SetupView: View {
         .font(.system(size: 13)).padding(28).foregroundStyle(Self.ink)
         .frame(minWidth: 540, minHeight: 510).background(Color.white)
         .preferredColorScheme(.light)
+    }
+}
+
+private struct ModelOptionStyle: ButtonStyle {
+    let selected: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        ModelOptionLabel(label: configuration.label, selected: selected, pressed: configuration.isPressed)
+    }
+
+    private struct ModelOptionLabel: View {
+        let label: ButtonStyleConfiguration.Label
+        let selected: Bool
+        let pressed: Bool
+        @State private var hovered = false
+        var body: some View {
+            label
+                .background(SetupView.ink.opacity(pressed ? 0.12 : hovered ? 0.07 : selected ? 0.04 : 0))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .onHover { hovered = $0 }
+        }
     }
 }
