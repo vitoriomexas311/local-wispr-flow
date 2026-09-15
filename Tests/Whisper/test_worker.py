@@ -26,6 +26,11 @@ with wave.open(str(fixture)) as audio:
     assert (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) == (1, 2, 16000)
     raw = audio.readframes(audio.getnframes())
 samples = [n / 32768 for (n,) in struct.iter_unpack('<h', raw)]
+for untrusted in ['/etc/passwd', str(model.parent / '..' / model.parent.name / model.name), str(fixture.resolve())]:
+    rejected = subprocess.run(command[:-1] + [untrusted], input=pcm(samples), capture_output=True, timeout=30)
+    assert rejected.returncode == 4 and not rejected.stdout, 'Unapproved model path accepted'
+symbols = subprocess.run(['/usr/bin/nm', '-u', str(worker.resolve())], capture_output=True, check=True).stdout
+assert b'_dlopen' not in symbols, 'Worker can dynamically load external backend libraries'
 start = time.monotonic()
 result = run(pcm(samples))
 elapsed = time.monotonic() - start

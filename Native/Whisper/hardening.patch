@@ -1,0 +1,503 @@
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -1,4 +1,5 @@
+ #include "whisper.h"
++#include <new>
+ #include "whisper-arch.h"
+ 
+ #include "ggml.h"
+@@ -1588,7 +1589,7 @@
+         read_safe(loader, filters.n_mel);
+         read_safe(loader, filters.n_fft);
+ 
+-        filters.data.resize(filters.n_mel * filters.n_fft);
++        filters.data.resize(int64_t(filters.n_mel) * filters.n_fft);
+         loader->read(loader->context, filters.data.data(), filters.data.size() * sizeof(float));
+         BYTESWAP_FILTERS(filters);
+     }
+@@ -2171,8 +2172,8 @@
+                         0, 2, 1, 3);
+ 
+             if (wctx.params.flash_attn) {
+-                ggml_build_forward_expand(gf, ggml_cpy(ctx0, Kcur, ggml_view_1d(ctx0, kv_pad.k, n_ctx*n_state, 0)));
+-                ggml_build_forward_expand(gf, ggml_cpy(ctx0, Vcur, ggml_view_1d(ctx0, kv_pad.v, n_ctx*n_state, 0)));
++                ggml_build_forward_expand(gf, ggml_cpy(ctx0, Kcur, ggml_view_1d(ctx0, kv_pad.k, int64_t(n_ctx)*n_state, 0)));
++                ggml_build_forward_expand(gf, ggml_cpy(ctx0, Vcur, ggml_view_1d(ctx0, kv_pad.v, int64_t(n_ctx)*n_state, 0)));
+ 
+                 struct ggml_tensor * K =
+                     ggml_view_3d(ctx0, kv_pad.k,
+@@ -2352,15 +2353,15 @@
+         struct ggml_tensor * v;
+ 
+         if (wctx.params.flash_attn) {
+-            k = ggml_view_1d(ctx0, wstate.kv_cross.k, n_state*n_ctx,
++            k = ggml_view_1d(ctx0, wstate.kv_cross.k, int64_t(n_state)*n_ctx,
+                     (ggml_element_size(wstate.kv_cross.k)*n_state)*(il*n_ctx_pad));
+ 
+-            v = ggml_view_1d(ctx0, wstate.kv_cross.v, n_state*n_ctx,
++            v = ggml_view_1d(ctx0, wstate.kv_cross.v, int64_t(n_state)*n_ctx,
+                     (ggml_element_size(wstate.kv_cross.v)*n_state)*(il*n_ctx_pad));
+         } else {
+             Vcross = ggml_transpose(ctx0, ggml_reshape_2d(ctx0, Vcross, n_state, n_ctx));
+ 
+-            k = ggml_view_1d(ctx0, wstate.kv_cross.k, n_state*n_ctx,
++            k = ggml_view_1d(ctx0, wstate.kv_cross.k, int64_t(n_state)*n_ctx,
+                     (ggml_element_size(wstate.kv_cross.k)*n_state)*(il*n_ctx));
+ 
+             v = ggml_view_2d(ctx0, wstate.kv_cross.v, n_ctx, n_state,
+@@ -2619,15 +2620,15 @@
+                 struct ggml_tensor * v;
+ 
+                 if (wctx.params.flash_attn) {
+-                    k = ggml_view_1d(ctx0, kv_self.k, n_tokens*n_state,
++                    k = ggml_view_1d(ctx0, kv_self.k, int64_t(n_tokens)*n_state,
+                             (ggml_element_size(kv_self.k)*n_state)*(il*n_ctx + kv_head));
+ 
+-                    v = ggml_view_1d(ctx0, kv_self.v, n_tokens*n_state,
++                    v = ggml_view_1d(ctx0, kv_self.v, int64_t(n_tokens)*n_state,
+                             (ggml_element_size(kv_self.v)*n_state)*(il*n_ctx + kv_head));
+                 } else {
+                     Vcur = ggml_transpose(ctx0, ggml_reshape_2d(ctx0, Vcur, n_state, n_tokens));
+ 
+-                    k = ggml_view_1d(ctx0, kv_self.k, n_tokens*n_state,
++                    k = ggml_view_1d(ctx0, kv_self.k, int64_t(n_tokens)*n_state,
+                             (ggml_element_size(kv_self.k)*n_state)*(il*n_ctx + kv_head));
+ 
+                     v = ggml_view_2d(ctx0, kv_self.v, n_tokens, n_state,
+@@ -2651,7 +2652,7 @@
+                         n_state_head, n_kv, n_head,
+                         ggml_element_size(kv_self.k)*n_state,
+                         ggml_element_size(kv_self.k)*n_state_head,
+-                        ggml_element_size(kv_self.k)*n_state*n_ctx*il);
++                        ggml_element_size(kv_self.k)*int64_t(n_state)*n_ctx*il);
+ 
+             if (wctx.params.flash_attn) {
+                 struct ggml_tensor * V =
+@@ -2659,7 +2660,7 @@
+                             n_state_head, n_kv, n_head,
+                             ggml_element_size(kv_self.v)*n_state,
+                             ggml_element_size(kv_self.v)*n_state_head,
+-                            ggml_element_size(kv_self.v)*n_state*n_ctx*il);
++                            ggml_element_size(kv_self.v)*int64_t(n_state)*n_ctx*il);
+ 
+                 cur = ggml_flash_attn_ext(ctx0, Q, K, V, KQ_mask_f16, 1.0f, 0.0f, 0.0f);
+ 
+@@ -2995,7 +2996,7 @@
+         }
+     }
+ 
+-    logits_out.resize(n_tokens*n_vocab);
++    logits_out.resize(int64_t(n_tokens)*n_vocab);
+     for (int i = 0; i < n_tokens; i++) {
+         if (batch.logits[i] == 0) {
+             continue;
+@@ -3199,7 +3200,7 @@
+             }
+             // handle n_fft remainder
+             for (; k < n_fft; k++) {
+-                sum += fft_out[k] * filters.data[j * n_fft + k];
++                sum += double(fft_out[k]) * filters.data[j * n_fft + k];
+             }
+             sum = log10(std::max(sum, 1e-10));
+             mel.data[j * mel.n_len + i] = sum;
+@@ -3259,7 +3260,7 @@
+     mel.n_len     = (samples_padded.size() - frame_size) / frame_step;
+     // Calculate semi-padded sample length to ensure compatibility
+     mel.n_len_org = 1 + (n_samples + stage_2_pad - frame_size) / frame_step;
+-    mel.data.resize(mel.n_mel * mel.n_len);
++    mel.data.resize(int64_t(mel.n_mel) * mel.n_len);
+ 
+     {
+         std::vector<std::thread> workers(n_threads - 1);
+@@ -3536,7 +3537,7 @@
+     }
+ #endif
+ 
+-    state->logits.reserve(ctx->vocab.n_vocab * ctx->model.hparams.n_text_ctx);
++    state->logits.reserve(int64_t(ctx->vocab.n_vocab) * ctx->model.hparams.n_text_ctx);
+ 
+     state->batch = whisper_batch_init(ctx->model.hparams.n_text_ctx, WHISPER_MAX_DECODERS);
+ 
+@@ -4004,8 +4005,8 @@
+     state->mel.n_len_org = n_len;
+     state->mel.n_mel     = n_mel;
+ 
+-    state->mel.data.resize(n_len*n_mel);
+-    memcpy(state->mel.data.data(), data, n_len*n_mel*sizeof(float));
++    state->mel.data.resize(int64_t(n_len)*n_mel);
++    memcpy(state->mel.data.data(), data, int64_t(n_len)*n_mel*sizeof(float));
+ 
+     return 0;
+ }
+@@ -5538,7 +5539,7 @@
+                         __func__, i, segments[i].start/100.0, segments[i].end/100.0, (segments[i].end - segments[i].start)/100.0);
+     }
+ 
+-    whisper_vad_segments * vad_segments = new whisper_vad_segments;
++    whisper_vad_segments * vad_segments = new (std::nothrow) whisper_vad_segments;
+     if (vad_segments == NULL) {
+         WHISPER_LOG_ERROR("%s: failed to allocate memory for whisper_vad_segments\n", __func__);
+         return nullptr;
+--- a/ggml/src/ggml-cpu/ggml-cpu.cpp
++++ b/ggml/src/ggml-cpu/ggml-cpu.cpp
+@@ -7,6 +7,7 @@
+ #include "amx/amx.h"
+ 
+ #include <cctype>
++#include <new>
+ #include <string>
+ #include <vector>
+ 
+@@ -136,7 +137,7 @@
+     cpu_plan->cgraph = *cgraph; // FIXME: deep copy
+ 
+     if (cpu_plan->cplan.work_size > 0) {
+-        cpu_plan->cplan.work_data = new uint8_t[cpu_plan->cplan.work_size];
++        cpu_plan->cplan.work_data = new (std::nothrow) uint8_t[cpu_plan->cplan.work_size];
+         if (cpu_plan->cplan.work_data == NULL) {
+             delete cpu_plan;
+             return NULL;
+@@ -218,7 +219,7 @@
+     // initialize CPU backend now to avoid slowing the first graph computation
+     ggml_cpu_init();
+ 
+-    struct ggml_backend_cpu_context * ctx = new ggml_backend_cpu_context;
++    struct ggml_backend_cpu_context * ctx = new (std::nothrow) ggml_backend_cpu_context;
+     if (ctx == NULL) {
+         return NULL;
+     }
+@@ -231,7 +232,7 @@
+     ctx->abort_callback_data = NULL;
+     ctx->use_ref             = false;
+ 
+-    ggml_backend_t cpu_backend = new ggml_backend {
++    ggml_backend_t cpu_backend = new (std::nothrow) ggml_backend {
+         /* .guid    = */ ggml_backend_cpu_guid(),
+         /* .iface   = */ ggml_backend_cpu_i,
+         /* .device  = */ ggml_backend_reg_dev_get(ggml_backend_cpu_reg(), 0),
+--- a/ggml/src/ggml-cpu/repack.cpp
++++ b/ggml/src/ggml-cpu/repack.cpp
+@@ -3208,7 +3208,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK4_0;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q4_0));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q4_0));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3217,7 +3217,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q4_0x4(dst_tmp, interleave_block);
+         }
+@@ -3239,7 +3239,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q4_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q4_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3248,7 +3248,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i  = 0; i < nrows_interleaved; i++ ) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q4_Kx8(dst_tmp, interleave_block);
+         }
+@@ -3269,7 +3269,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q4_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q4_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3278,7 +3278,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i  = 0; i < nrows_interleaved; i++ ) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q4_Kx16(dst_tmp, interleave_block);
+         }
+@@ -3300,7 +3300,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q2_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q2_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3309,7 +3309,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q2_Kx8(dst_tmp, interleave_block);
+         }
+@@ -3332,7 +3332,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q2_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q2_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3343,7 +3343,7 @@
+             // This loop gathers 16 separate blocks (one from each column)
+             // that correspond to the same K-dimension chunk.
+             for (int i  = 0; i < nrows_interleaved; i++ ) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+ 
+             *dst++ = make_block_q2_Kx16(dst_tmp, interleave_block);
+@@ -3365,7 +3365,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK4_0;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q4_0));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q4_0));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3374,7 +3374,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i  = 0; i < nrows_interleaved; i++ ) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q4_0x16(dst_tmp, interleave_block);
+         }
+@@ -3399,7 +3399,7 @@
+     int                nrow    = ggml_nrows(t);
+     int                nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q5_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q5_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3408,7 +3408,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q5_Kx8(dst_tmp, interleave_block);
+         }
+@@ -3428,7 +3428,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK_K;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q6_K));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q6_K));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3437,7 +3437,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q6_Kx8(dst_tmp, interleave_block);
+         }
+@@ -3457,7 +3457,7 @@
+     int nrow = ggml_nrows(t);
+     int nblocks = t->ne[0] / QK4_0;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q4_0));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q4_0));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3466,7 +3466,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i  = 0; i < nrows_interleaved; i++ ) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q4_0x8(dst_tmp, interleave_block);
+         }
+@@ -3491,7 +3491,7 @@
+     int                nrow    = ggml_nrows(t);
+     int                nblocks = t->ne[0] / QK8_0;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q8_0));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q8_0));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3500,7 +3500,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q8_0x4(dst_tmp, interleave_block);
+         }
+@@ -3545,7 +3545,7 @@
+     int                nrow    = ggml_nrows(t);
+     int                nblocks = t->ne[0] / QK8_0;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_q8_0));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_q8_0));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3554,7 +3554,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_q8_0x16(dst_tmp, interleave_block);
+         }
+@@ -3611,7 +3611,7 @@
+     int nrows_interleaved = 4;
+     int nblocks = t->ne[0] / QK4_NL;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_iq4_nl));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_iq4_nl));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3620,7 +3620,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_iq4_nlx4(dst_tmp, interleave_block);
+         }
+@@ -3668,7 +3668,7 @@
+     int nrows_interleaved = 8;
+     int nblocks = t->ne[0] / QK4_NL;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_iq4_nl));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_iq4_nl));
+ 
+     if (t->ne[1] % nrows_interleaved != 0) {
+         return -1;
+@@ -3677,7 +3677,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_iq4_nlx8(dst_tmp, interleave_block);
+         }
+@@ -3725,7 +3725,7 @@
+     int nrows_interleaved = 16;
+     int nblocks = t->ne[0] / QK4_NL;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_iq4_nl));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_iq4_nl));
+ 
+     if (t->ne[1] % nrows_interleaved != 0) {
+         return -1;
+@@ -3734,7 +3734,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_iq4_nlx16(dst_tmp, interleave_block);
+         }
+@@ -3782,7 +3782,7 @@
+     int nrows_interleaved = 4;
+     int nblocks = t->ne[0] / QK_MXFP4;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_mxfp4));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_mxfp4));
+ 
+     if (t->ne[1] % nrows_interleaved != 0 || t->ne[0] % 8 != 0) {
+         return -1;
+@@ -3791,7 +3791,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_mxfp4x4(dst_tmp, interleave_block);
+         }
+@@ -3839,7 +3839,7 @@
+     int nrows_interleaved = 8;
+     int nblocks = t->ne[0] / QK_MXFP4;
+ 
+-    GGML_ASSERT(data_size == nrow * nblocks * sizeof(block_mxfp4));
++    GGML_ASSERT(data_size == int64_t(nrow) * nblocks * sizeof(block_mxfp4));
+ 
+     if (t->ne[1] % nrows_interleaved != 0) {
+         return -1;
+@@ -3848,7 +3848,7 @@
+     for (int b = 0; b < nrow; b += nrows_interleaved) {
+         for (int64_t x = 0; x < nblocks; x++) {
+             for (int i = 0; i < nrows_interleaved; i++) {
+-                dst_tmp[i] = src[x + i * nblocks];
++                dst_tmp[i] = src[x + int64_t(i) * nblocks];
+             }
+             *dst++ = make_block_mxfp4x8(dst_tmp, interleave_block);
+         }
+--- a/ggml/src/ggml-opt.cpp
++++ b/ggml/src/ggml-opt.cpp
+@@ -671,7 +671,7 @@
+         // If the loss is per datapoint it was scaled by 1.0f/opt_period for each physical batch.
+         const float loss_scaled = result->loss_per_datapoint ? loss*result->opt_period : loss;
+         sum         += loss_scaled;
+-        sum_squared += loss_scaled*loss_scaled;
++        sum_squared += double(loss_scaled)*loss_scaled;
+     }
+ 
+     const double mean = sum/nbatches;
+--- a/ggml/src/ggml-backend.cpp
++++ b/ggml/src/ggml-backend.cpp
+@@ -842,7 +842,7 @@
+ 
+ #define hash_id(tensor) ggml_hash_find_or_insert(&sched->hash_set, tensor)
+ #define tensor_backend_id(tensor) sched->hv_tensor_backend_ids[hash_id(tensor)]
+-#define tensor_id_copy(id, backend_id, copy_id) sched->hv_tensor_copies[(id) * sched->n_backends * sched->n_copies + (backend_id) * sched->n_copies + (copy_id)]
++#define tensor_id_copy(id, backend_id, copy_id) sched->hv_tensor_copies[(id) * sched->n_backends * sched->n_copies + int64_t(backend_id) * sched->n_copies + (copy_id)]
+ #define tensor_copy(tensor, backend_id, copy_id) tensor_id_copy(hash_id(tensor), backend_id, copy_id)
+ 
+ static void ggml_backend_sched_split_inputs_grow(struct ggml_backend_sched_split * split) {
+--- a/ggml/src/ggml-backend-dl.cpp
++++ b/ggml/src/ggml-backend-dl.cpp
+@@ -32,8 +32,9 @@
+ #else
+ 
+ dl_handle * dl_load_library(const fs::path & path) {
+-    dl_handle * handle = dlopen(path.string().c_str(), RTLD_NOW | RTLD_LOCAL);
+-    return handle;
++    // LocalFlow ships a static CPU backend. Never load environment-selected plugins.
++    (void) path;
++    return nullptr;
+ }
+ 
+ void * dl_get_sym(dl_handle * handle, const char * name) {

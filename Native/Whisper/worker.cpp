@@ -8,6 +8,44 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <CommonCrypto/CommonDigest.h>
+#include <fcntl.h>
+#include <pwd.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+// Open only the installed model, and hash the exact bytes passed to the parser.
+// This also closes the gap between the app's readiness hash and a later read.
+static std::vector<unsigned char> verified_model(const char *requested) {
+    const auto *account = getpwuid(getuid());
+    if (!account || !account->pw_dir) return {};
+    const std::string path = std::string(account->pw_dir) +
+        "/Library/Application Support/LocalFlow/Models/ggml-tiny.en-q5_1.bin";
+    if (path != requested) return {};
+    const int fd = open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+    if (fd < 0) return {};
+    struct stat info{};
+    constexpr size_t model_size = 32166155;
+    if (fstat(fd, &info) || !S_ISREG(info.st_mode) || info.st_size != model_size) {
+        close(fd); return {};
+    }
+    std::vector<unsigned char> bytes(model_size);
+    size_t used = 0;
+    while (used < bytes.size()) {
+        const auto count = read(fd, bytes.data() + used, bytes.size() - used);
+        if (count <= 0) { close(fd); return {}; }
+        used += size_t(count);
+    }
+    close(fd);
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(bytes.data(), CC_LONG(bytes.size()), digest);
+    constexpr unsigned char expected[] = {
+        0xc7,0x7c,0x57,0x66,0xf1,0xce,0xf0,0x9b,0x6b,0x7d,0x47,0xf2,0x1b,0x54,0x6c,0xbd,
+        0xdd,0x41,0x57,0x88,0x6b,0x3b,0x5d,0x6d,0x4f,0x70,0x9e,0x91,0xe6,0x6c,0x7c,0x2b
+    };
+    if (!std::equal(std::begin(digest), std::end(digest), std::begin(expected))) return {};
+    return bytes;
+}
 
 static void quiet(enum ggml_log_level, const char *, void *) {}
 static void json_string(const char *text) {
@@ -48,7 +86,11 @@ int main(int argc, char **argv) {
     whisper_log_set(quiet, nullptr);
     auto config = whisper_context_default_params();
     config.use_gpu = false;
-    auto *context = whisper_init_from_file_with_params(argv[1], config);
+    auto model = verified_model(argv[1]);
+    if (model.empty()) return 4;
+    auto *context = whisper_init_from_buffer_with_params(model.data(), model.size(), config);
+    model.clear();
+    model.shrink_to_fit();
     if (!context) return 4;
     auto params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads = int(std::max(1u, std::min(4u, std::thread::hardware_concurrency())));
