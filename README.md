@@ -1,6 +1,6 @@
 # LocalFlow
 
-<img src="Resources/LocalFlow.png" width="112" alt="LocalFlow photo icon">
+<img src="Resources/LocalFlow.png" width="112" alt="LocalFlow waveform icon">
 
 Private hold-to-dictate for macOS 14+. Native Swift, Apple's on-device speech
 engine or an optional **32 MB Whisper Tiny English model**, with no cloud fallback.
@@ -13,9 +13,11 @@ Hold Control–Option–Space, speak, release, and insert the final text in the
 original field. US English is the first supported language. Prepare Apple speech
 assets or install the tiny Whisper model before offline use. Unsupported configurations refuse capture.
 
-Choose another shortcut in LocalFlow Setup, including Shift–Tab. That choice
-uses Shift–Tab for dictation while LocalFlow is listening, overriding its usual
-backward focus navigation. Plain Tab continues to work normally.
+Click **Change** next to Shortcut and press any key with your preferred modifiers.
+Modifier-only chords (including Fn) are supported. Release modifiers to save them.
+Existing shortcuts are preserved across upgrades. Shortcuts take priority while
+LocalFlow runs; OS-reserved combinations may be intercepted by macOS. Caps Lock
+and media keys are not hold shortcuts. Test your choice in a disposable text field.
 
 Application, installer, and test code are MIT licensed. Apple's speech framework
 and model are proprietary macOS components. The optional Whisper runtime and model
@@ -23,25 +25,27 @@ are MIT licensed.
 
 ## Tiny local model
 
-In LocalFlow Setup, click **Download Whisper Tiny · 32 MB**, then select
-**Whisper Tiny English**. Allow Microphone, Accessibility, and Input Monitoring.
-Apple Speech permission is needed only for the Apple engine.
-
-From the release ZIP (or repository), provisioning also works with:
+For another Mac, transfer the **universal offline ZIP**, extract it, and run:
 
 ```sh
-bash Distribution/download-model.sh
+bash ./setup.sh
 ```
 
-In an extracted release ZIP the script is at the top level:
-`bash ./download-model.sh`. After this one-time model download, dictation is
-entirely local. No account, API key, Python, Homebrew, or compiler is needed by
-employees. The model stays outside the signed app, so installing it does not
-invalidate app permissions.
+The offline ZIP contains the app for Apple Silicon and Intel plus the verified
+32 MB model. Setup installs both without networking, selects Whisper by default
+on a fresh installation, and opens the app. Allow Microphone, Accessibility, and
+Input Monitoring in macOS. No account, compiler, Homebrew, Python, or API key.
 
-For an offline workstation, transfer `ggml-tiny.en-q5_1.bin` and use **Import
-model file offline…**, or pass its path to the same script. Both routes verify
-the exact SHA-256; an incomplete or different model is rejected.
+A smaller app-only ZIP uses the same command, downloading the model once. To
+prohibit that download and supply your own verified copy:
+
+```sh
+bash ./setup.sh --offline /path/to/ggml-tiny.en-q5_1.bin
+```
+
+Model import/download is also available in the app. Apple Speech remains an
+optional engine and needs its separate permission and OS assets. No recognition
+engine falls back to a cloud service.
 
 The app transcribes during the hold in bounded, overlapping windows, retains text
 in memory, and inserts only after release. The recording banner appears at the

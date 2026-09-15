@@ -5,7 +5,7 @@ all real-device acceptance gates yet.
 
 ## Implemented
 
-- Native macOS menu-bar app, photo icon, hold-to-dictate shortcuts, recording HUD,
+- Native macOS menu-bar app, waveform icon, hold-to-dictate shortcuts, recording HUD,
   cancellation, guarded destination insertion, and offline installer.
 - Apple on-device recognition remains available. Optional Whisper tiny.en Q5_1
   uses a 32.2 MB verified model and a bundled native whisper.cpp helper.
@@ -17,16 +17,21 @@ all real-device acceptance gates yet.
   writes. Cancelled/stale results cannot insert text. No automatic engine fallback.
 - Model provisioning is outside the signed app and preserves existing app grants.
   Replacing an unsigned app build may still require fresh macOS permission grants.
-- Default shortcut: Control–Option–Space. Other choices include Option–Shift–Space
-  and Shift–Tab. Caps Lock is not implemented. The recording banner is bottom
-  center above the Dock.
+- Shortcut recorder accepts custom physical keys with any standard modifiers,
+  plus modifier-only chords including Fn. Legacy preset settings migrate in place.
+  Caps Lock/media keys and OS-reserved combinations have platform limitations.
+- Compact settings show only shortcut, engine/model, permissions and active status.
+- Universal offline packaging includes Apple Silicon/Intel binaries and the verified
+  Whisper model. `bash ./setup.sh` installs both offline and opens the app. An
+  app-only package downloads the model once; explicit offline import is supported.
+
 
 ## Measured results, September 15, 2026
 
 All speech fixtures below are public synthetic audio, **not real microphone
 acceptance**. Accuracy is reported, not a fixed numeric release gate.
 
-- 26 core tests passed; all nine core source files have 100% executable-line
+- 28 core tests passed; all nine core source files have 100% executable-line
   coverage. This does not measure the native dependency or platform adapters.
 - The native helper passed malformed-input, silence, timestamp-bound, and real
   recognition tests with network access and file writes denied.
@@ -51,9 +56,9 @@ acceptance**. Accuracy is reported, not a fixed numeric release gate.
 
 ## Remaining acceptance
 
-This Mac reported its lid closed with the built-in microphone selected. That mic
-is disconnected by hardware with the lid closed. The owner has been asked to open
-the lid or connect an external microphone before microphone-to-text validation.
+The owner opened the lid for the next microphone acceptance run. macOS permission
+grants are still required for the updated unsigned app; fixture tests cannot
+substitute for those hardware checks.
 Computer use refused Terminal.app, so Terminal/OpenCode testing must be performed
 by the owner; the isolated launcher is in `Tests/Manual`.
 
@@ -71,7 +76,8 @@ blocker on September 14.
 
 ## Artifacts and environment
 
-`dist/LocalFlow-arm64-draft.zip` and its adjacent `.sha256` file are local candidates.
+`dist/LocalFlow-universal-draft.zip` (with model) and architecture-specific ZIPs
+are local candidates with adjacent `.sha256` files.
 Read the embedded `SOURCE_COMMIT` and checksum for current provenance. Do not
 publish or label a candidate validated until its exact-artifact hardware gates pass.
 The model is installed separately under

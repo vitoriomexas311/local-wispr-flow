@@ -1,7 +1,7 @@
 # Dependency inventory
 
 LocalFlow's Swift executable has no third-party Swift packages. It links Apple's
-AppKit, Foundation, AVFoundation, Speech, CoreGraphics, Carbon/HIServices, and the
+AppKit, SwiftUI, Foundation, AVFoundation, Speech, CoreGraphics, Carbon/HIServices, and the
 Swift standard libraries supplied with macOS. Apple speech assets are a
 proprietary OS dependency and must be provisioned before offline operation.
 
