@@ -1,18 +1,10 @@
-// Exact-photo icon conversion. ImageIO applies orientation; new PNG contexts
-// retain pixels only, without copying the source photograph's metadata.
+// Original vector waveform artwork. No external assets, fonts, or photo inputs.
 import AppKit
 import ImageIO
 import UniformTypeIdentifiers
 
-guard CommandLine.arguments.count == 3 else { fatalError("usage: generate-icon INPUT_IMAGE OUTPUT_DIRECTORY") }
-let sourceURL = URL(fileURLWithPath: CommandLine.arguments[1])
-let output = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
-guard let source = CGImageSourceCreateWithURL(sourceURL as CFURL, nil),
-      let photo = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-        kCGImageSourceCreateThumbnailFromImageAlways: true,
-        kCGImageSourceCreateThumbnailWithTransform: true,
-        kCGImageSourceThumbnailMaxPixelSize: 4096
-      ] as CFDictionary) else { fatalError("Cannot decode the supplied image") }
+guard CommandLine.arguments.count == 2 else { fatalError("usage: generate-icon OUTPUT_DIRECTORY") }
+let output = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
 let iconset = output.appendingPathComponent("LocalFlow.iconset", isDirectory: true)
 try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
@@ -26,11 +18,18 @@ func render(_ size: Int, to url: URL) throws {
     let area = CGRect(x: inset, y: inset, width: edge - 2 * inset, height: edge - 2 * inset)
     context.addPath(CGPath(roundedRect: area, cornerWidth: edge * 0.20, cornerHeight: edge * 0.20, transform: nil))
     context.clip()
-    let scale = max(area.width / CGFloat(photo.width), area.height / CGFloat(photo.height))
-    let width = CGFloat(photo.width) * scale
-    let height = CGFloat(photo.height) * scale
-    context.interpolationQuality = .high
-    context.draw(photo, in: CGRect(x: (edge - width) / 2, y: (edge - height) / 2, width: width, height: height))
+    let colors = [CGColor(red: 1, green: 0.39, blue: 0.25, alpha: 1),
+                  CGColor(red: 0.91, green: 0.18, blue: 0.29, alpha: 1)] as CFArray
+    let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0,1])!
+    context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: edge), end: CGPoint(x: edge, y: 0), options: [])
+    context.setFillColor(CGColor(red: 1, green: 0.98, blue: 0.92, alpha: 1))
+    for (index, fraction) in [0.16, 0.31, 0.49, 0.35, 0.20].enumerated() {
+        let height = edge * fraction
+        let bar = CGRect(x: edge * (0.245 + Double(index) * 0.112), y: (edge - height) / 2,
+                         width: edge * 0.07, height: height)
+        context.addPath(CGPath(roundedRect: bar, cornerWidth: edge * 0.035, cornerHeight: edge * 0.035, transform: nil))
+        context.fillPath()
+    }
     guard let bitmap = context.makeImage(),
           let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         fatalError("Cannot encode icon")
