@@ -1,87 +1,83 @@
 # Implementation status
 
-No release has passed real-device acceptance yet.
+The tiny local engine is implemented and downloaded. No public release has passed
+all real-device acceptance gates yet.
 
-## Current verified build
+## Implemented
 
-The approved local app was built from `4c401c5d53dcd94d0ec91ea8c5031cb651308273`.
-Keep that bundle unchanged while completing microphone acceptance: rebuilding an
-ad-hoc signed app can invalidate existing macOS permission grants.
+- Native macOS menu-bar app, photo icon, hold-to-dictate shortcuts, recording HUD,
+  cancellation, guarded destination insertion, and offline installer.
+- Apple on-device recognition remains available. Optional Whisper tiny.en Q5_1
+  uses a 32.2 MB verified model and a bundled native whisper.cpp helper.
+- Setup includes engine selection, explicit model download, and verified offline
+  file import. Whisper needs Microphone, Accessibility, and Input Monitoring;
+  Apple's Speech permission/assets apply only to the Apple engine.
+- Whisper processes bounded 25-second windows with one-second overlap. PCM and
+  text travel through memory pipes. The helper denies network access and file
+  writes. Cancelled/stale results cannot insert text. No automatic engine fallback.
+- Model provisioning is outside the signed app and preserves existing app grants.
+  Replacing an unsigned app build may still require fresh macOS permission grants.
+- Default shortcut: Control–Option–Space. Other choices include Option–Shift–Space
+  and Shift–Tab. Caps Lock is not implemented. The recording banner is bottom
+  center above the Dock.
 
-- The repository is public, MIT licensed, with atomic commits pushed to main.
-- Twenty-three core tests pass, with 100% executable-line coverage across all
-  eight core files. Platform executable coverage has not been collected.
-- Both [CI](https://github.com/vitoriomexas311/local-wispr-flow/actions/runs/34911299940)
-  and [Security](https://github.com/vitoriomexas311/local-wispr-flow/actions/runs/34911299998)
-  passed for this source commit. Checks include macOS 14, 15, and 26, architecture
-  packaging, installer lifecycle, Swift CodeQL, Gitleaks, and shell checks.
-- All four grants were verified: Speech Recognition, Microphone, Accessibility,
-  and Input Monitoring. Local en-US recognition is supported and available.
-- The current machine preference is Option–Shift–Space. The shipped default is
-  Control–Option–Space; Shift–Tab is also supported. Caps Lock is not implemented
-  and no keyboard remapping was applied.
-- A native TextEdit test observed capture start and cancellation, with the field
-  and clipboard unchanged. Computer use also observed the actual floating
-  `Recording 0:04 · Escape cancels` banner, at bottom center above the Dock.
-  These closed-lid tests prove activation, not acoustic pickup or dictation insertion.
-- The short injected-audio test using Apple's recognizer scored 8.33% word error
-  rate. The full 600-second injected test completed all 14 recognition windows:
-  1,608 expected words, 1,385 recognized, 261 errors, 16.23% word error rate.
-  That report retains its original failed status against the diagnostic 15% target.
-- On September 14, the owner removed that accuracy target as a blocker for the
-  personal pilot. Accuracy remains reported; hardware and offline acceptance
-  requirements remain. The release verifier does not impose a numeric WER cutoff.
-- The final recognition window retained fewer segments than earlier completed
-  utterances in that window. Possible transcript loss in final-result reconciliation
-  remains under investigation; the measurements do not prove the cause is model
-  accuracy alone. Earlier fixes improved the ten-minute result from 85.88% WER.
-- A speaker-to-microphone attempt inserted no text. This Mac still reported its
-  lid closed with the built-in microphone selected. The owner must open the lid
-  or use an external microphone before acoustic acceptance can establish pickup.
-- Computer use refused Terminal.app access. The isolated OpenCode 1.18.31 launcher
-  in `Tests/Manual` supports owner-performed testing; no alternative automation API
-  may be used to bypass that refusal. Terminal/OpenCode acceptance is outstanding.
-- Browser insertion, the full real-microphone duration test, and device-wide offline
-  cold-start/repeated dictation acceptance are outstanding. Mocked and injected
-  tests cannot satisfy those gates.
-- The owner's photograph is the app/menu-bar icon. Only exported pixel assets are
-  committed; the original photo is excluded.
+## Measured results, September 15, 2026
 
-## Local package
+All speech fixtures below are public synthetic audio, **not real microphone
+acceptance**. Accuracy is reported, not a fixed numeric release gate.
 
-The draft `LocalFlow-arm64-draft.zip` contains the approved build and an offline
-installer. Its SHA-256 is
-`cc83c2c4d65c78a1ce0b18a4c9924de2c6bcbbeedb0213cf23adea9ce39d6cfa`.
-The app executable SHA-256 is
-`98129b17fc5cfcdc5287d8f587799cf9f04ac5727a3a43434ea3a690c429ec84`.
-These identify an unvalidated local draft, not a published release.
+- 26 core tests passed; all nine core source files have 100% executable-line
+  coverage. This does not measure the native dependency or platform adapters.
+- The native helper passed malformed-input, silence, timestamp-bound, and real
+  recognition tests with network access and file writes denied.
+- Clean application build `a8294d3`: short resampling/transcription test passed,
+  with 0.28 seconds finalization latency and 8.33% word error rate.
+- Same build: 58-second, multi-window transcription passed, with 0.32 seconds
+  finalization latency; 155 recognized words, 13 errors out of 156 expected.
+- The ten-minute development integration run completed in 600.35 seconds,
+  finalizing in 0.34 seconds: 1,596 recognized words, 139 errors out of 1,608
+  expected (8.64% WER). This run preceded the final helper sandbox integration;
+  the clean multi-window test above exercised that production sandbox path.
+- Actual pipeline cancellation/stale-result tests passed in the clean app build.
+- Offline model import, checksum rejection preserving the existing model, and
+  symlink refusal passed. App installation, repeat install, rollback, uninstall,
+  checksum-tamper rejection, and independent symlink rejection passed locally.
+- [CI at a8294d3](https://github.com/vitoriomexas311/local-wispr-flow/actions/runs/35014881586)
+  passed on macOS 14, 15, and 26, including both architecture builds and packaged
+  Whisper integration tests. Subsequent commits require their own checks.
+- Swift and C/C++ CodeQL run separately, alongside secret scanning, shell lint,
+  source guardrails, and release-gate tests. Their live run results are authoritative;
+  a pending scan is not a pass.
 
-Installer lifecycle checks passed in CI for this source. The latest local rerun
-correctly refused to install while LocalFlow was running; that refusal is not a
-local lifecycle pass. Do not quit or replace the approved app merely to repeat
-already passing CI checks.
+## Remaining acceptance
 
-## Optional engine research
+This Mac reported its lid closed with the built-in microphone selected. That mic
+is disconnected by hardware with the lid closed. The owner has been asked to open
+the lid or connect an external microphone before microphone-to-text validation.
+Computer use refused Terminal.app, so Terminal/OpenCode testing must be performed
+by the owner; the isolated launcher is in `Tests/Manual`.
 
-The owner requested a comparison of downloadable local models. Moonshine Tiny
-Streaming and quantized Whisper tiny.en were recommended for evaluation; neither
-is integrated or installed. Apple remains the implemented engine. A future model
-option must preserve offline dictation and explicit, separately controlled asset
-provisioning.
+Actual microphone insertion, selected-text replacement, browser/Terminal
+compatibility, protected-field behavior, the real ten-minute hold, and whole-device
+offline cold-start/repeated dictation are not yet established for the new build.
+Platform executable coverage has not been collected. Tests and scans do not
+certify company-wide CUI compliance.
 
-## Initial environment
+The earlier Apple engine ten-minute run scored 16.23% WER and showed possible
+final-utterance loss. That Apple-specific investigation is unresolved; the optional
+Whisper engine does not use that accumulator. Historical failed reports remain
+unchanged. The owner removed the diagnostic 15% accuracy target as a personal-pilot
+blocker on September 14.
 
-- macOS 14.8.4, Apple Silicon; Swift 6.0.3 command-line tools.
-- Speech readiness probe: en-US required assets unavailable;
-  `supportsOnDeviceRecognition=false` despite `isAvailable=true`.
-- Existing command-line tools contain duplicate SwiftBridging module maps;
-  framework imports initially failed; isolated workaround implemented.
-- Full Xcode and Developer ID signing identities absent. The pilot is unnotarized.
+## Artifacts and environment
 
-## Required acceptance
+`dist/LocalFlow-arm64-draft.zip` and its adjacent `.sha256` file are local candidates.
+Read the embedded `SOURCE_COMMIT` and checksum for current provenance. Do not
+publish or label a candidate validated until its exact-artifact hardware gates pass.
+The model is installed separately under
+`~/Library/Application Support/LocalFlow/Models` and is not stored in Git.
 
-Core coverage, packaged app, real local recognizer, microphone, long recording,
-Terminal/OpenCode, TextEdit, browser fields, cancellation/focus safety, offline
-cold start, and CI must all be verified before a downloadable release is published.
-
-No downloadable release has been published. The unvalidated draft ZIP stays local.
+Local machine: macOS 14.8.4, Apple Silicon, Swift 6.0.3 command-line tools. The
+isolated `scripts/local-swift.sh` workaround leaves the system CLT installation
+unchanged. Full Xcode and a Developer ID identity are absent; the pilot is ad-hoc
+signed and unnotarized. Employees need no compiler or package manager.
