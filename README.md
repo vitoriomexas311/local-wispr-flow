@@ -5,9 +5,8 @@
 Private hold-to-dictate for macOS 14+. Native Swift, Apple's on-device speech
 engine or an optional **32 MB Whisper Tiny English model**, with no cloud fallback.
 
-**Pilot. No validated public release yet.** Core and native-engine tests are
-separate from real microphone/offline acceptance. See the measured status before
-company deployment.
+**[Download v0.1.0 — universal offline ZIP](https://github.com/vitoriomexas311/local-wispr-flow/releases/download/v0.1.0/LocalFlow-v0.1.0-universal-offline.zip).** Unsigned macOS release, with the model included.
+[Release notes and validation](https://github.com/vitoriomexas311/local-wispr-flow/releases/tag/v0.1.0) distinguish automated offline checks from owner-reported microphone acceptance.
 
 Hold Control–Option–Space, speak, release, and insert the final text in the
 original field. US English is the first supported language. Prepare Apple speech
@@ -28,7 +27,7 @@ are MIT licensed.
 For another Mac, transfer the **universal offline ZIP**, extract it, and run:
 
 ```sh
-bash ./setup.sh
+bash ./setup.sh --offline ./Models/ggml-tiny.en-q5_1.bin
 ```
 
 The offline ZIP contains the app for Apple Silicon and Intel plus the verified
@@ -48,8 +47,8 @@ optional engine and needs its separate permission and OS assets. No recognition
 engine falls back to a cloud service.
 
 The app transcribes during the hold in bounded, overlapping windows, retains text
-in memory, and inserts only after release. The recording banner appears at the
-bottom center above the Dock. A closed MacBook lid disconnects its built-in
+in memory, and inserts only after release. A small 36×36 recording symbol appears at the
+top right below the menu bar. A closed MacBook lid disconnects its built-in
 microphone; use an external microphone when working with the lid closed.
 
 ## Privacy boundary
@@ -58,6 +57,11 @@ LocalFlow will not intentionally persist audio/transcripts, use the clipboard,
 send telemetry, or send speech to a server. A destination application can still
 store or transmit the text you insert. This project does not certify CUI
 compliance or control macOS memory, diagnostics, or other applications.
+
+The app does not air-gap the Mac: disconnect its networks separately and follow
+your organization’s transfer policy. Use the bundled Whisper model for offline
+installation. The release was owner-authorized without further physical tests;
+full cross-app and whole-device offline acceptance is not claimed.
 
 See [the threat model](docs/THREAT_MODEL.md) and [implementation status](docs/STATUS.md).
 
