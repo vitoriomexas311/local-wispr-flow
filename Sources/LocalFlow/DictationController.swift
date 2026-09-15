@@ -45,11 +45,19 @@ final class DictationController {
         }
     }
 
+    var configuringShortcut = false {
+        didSet {
+            if configuringShortcut { cancel() }
+            monitor.suspended = configuringShortcut
+            monitor.policy = HotkeyPolicy(choice: monitor.policy.choice)
+        }
+    }
+
     var hotkey: HotkeyChoice {
         get { monitor.policy.choice }
         set {
             guard machine.phase == .idle else { return }
-            monitor.policy.choice = newValue
+            monitor.policy = HotkeyPolicy(choice: newValue)
             UserDefaults.standard.set(newValue.rawValue, forKey: "hotkey")
         }
     }
@@ -70,7 +78,7 @@ final class DictationController {
             }
         }
         engine = UserDefaults.standard.string(forKey: "recognitionEngine")
-            .flatMap(RecognitionEngine.init(rawValue:)) ?? .apple
+            .flatMap(RecognitionEngine.init(rawValue:)) ?? .whisperTiny
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in

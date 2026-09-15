@@ -36,18 +36,17 @@ func key(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
 }
 
 func modifierKeys(_ choice: HotkeyChoice) -> [(CGKeyCode, CGEventFlags)] {
-    switch choice {
-    case .controlOptionSpace: return [(59, .maskControl), (58, .maskAlternate)]
-    case .controlShiftSpace: return [(59, .maskControl), (56, .maskShift)]
-    case .optionShiftSpace: return [(58, .maskAlternate), (56, .maskShift)]
-    case .shiftTab: return [(56, .maskShift)]
-    }
+    let keys: [(KeyModifiers, CGKeyCode, CGEventFlags)] = [
+        (.control,59,.maskControl),(.option,58,.maskAlternate),(.shift,56,.maskShift),
+        (.command,55,.maskCommand),(.function,63,.maskSecondaryFn)
+    ]
+    return keys.filter { choice.modifiers.contains($0.0) }.map { ($0.1, $0.2) }
 }
 
 func releaseKeys(_ choice: HotkeyChoice) {
     let modifiers = modifierKeys(choice)
     var flags = modifiers.reduce(CGEventFlags()) { $0.union($1.1) }
-    key(choice.keyCode, down: false, flags: flags)
+    if !choice.isModifierOnly { key(choice.keyCode, down: false, flags: flags) }
     for (code, flag) in modifiers.reversed() {
         flags.remove(flag)
         key(code, down: false, flags: flags)
@@ -152,7 +151,7 @@ func run() -> Int32 {
         shortcutFlags.insert(flag)
         key(code, down: true, flags: shortcutFlags)
     }
-    key(shortcut.keyCode, down: true, flags: shortcutFlags)
+    if !shortcut.isModifierOnly { key(shortcut.keyCode, down: true, flags: shortcutFlags) }
     defer { releaseKeys(shortcut) }
     pump(0.8)
     report(["kind": "held-key-state", "hotkey": shortcut.rawValue,
